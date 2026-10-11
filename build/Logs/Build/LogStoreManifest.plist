@@ -1,0 +1,179 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<plist version="1.0">
+<dict>
+	<key>logFormatVersion</key>
+	<integer>12</integer>
+	<key>logs</key>
+	<dict>
+		<key>0606AA62-DD24-4A75-A4F7-7CCE98D44CD5</key>
+		<dict>
+			<key>className</key>
+			<string>IDECommandLineBuildLog</string>
+			<key>documentTypeString</key>
+			<string>&lt;nil&gt;</string>
+			<key>domainType</key>
+			<string>Xcode.IDEActivityLogDomainType.BuildLog</string>
+			<key>fileName</key>
+			<string>0606AA62-DD24-4A75-A4F7-7CCE98D44CD5.xcactivitylog</string>
+			<key>hasPrimaryLog</key>
+			<true/>
+			<key>primaryObservable</key>
+			<dict>
+				<key>highLevelStatus</key>
+				<string>S</string>
+				<key>totalNumberOfAnalyzerIssues</key>
+				<integer>0</integer>
+				<key>totalNumberOfErrors</key>
+				<integer>0</integer>
+				<key>totalNumberOfTestFailures</key>
+				<integer>0</integer>
+				<key>totalNumberOfWarnings</key>
+				<integer>0</integer>
+			</dict>
+			<key>schemeIdentifier-containerName</key>
+			<string>CruzRoja project</string>
+			<key>schemeIdentifier-schemeName</key>
+			<string>CruzRoja</string>
+			<key>schemeIdentifier-sharedScheme</key>
+			<integer>1</integer>
+			<key>signature</key>
+			<string>Building project CruzRoja with scheme CruzRoja</string>
+			<key>timeStartedRecording</key>
+			<real>813455102.3369</real>
+			<key>timeStoppedRecording</key>
+			<real>813455105.58881605</real>
+			<key>title</key>
+			<string>Building project CruzRoja with scheme CruzRoja</string>
+			<key>uniqueIdentifier</key>
+			<string>0606AA62-DD24-4A75-A4F7-7CCE98D44CD5</string>
+		</dict>
+		<key>615839F9-6E9E-443E-AA1F-12DB9D2F85B2</key>
+		<dict>
+			<key>className</key>
+			<string>IDECommandLineBuildLog</string>
+			<key>documentTypeString</key>
+			<string>&lt;nil&gt;</string>
+			<key>domainType</key>
+			<string>Xcode.IDEActivityLogDomainType.BuildLog</string>
+			<key>fileName</key>
+			<string>615839F9-6E9E-443E-AA1F-12DB9D2F85B2.xcactivitylog</string>
+			<key>hasPrimaryLog</key>
+			<true/>
+			<key>primaryObservable</key>
+			<dict>
+				<key>highLevelStatus</key>
+				<string>S</string>
+				<key>totalNumberOfAnalyzerIssues</key>
+				<integer>0</integer>
+				<key>totalNumberOfErrors</key>
+				<integer>0</integer>
+				<key>totalNumberOfTestFailures</key>
+				<integer>0</integer>
+				<key>totalNumberOfWarnings</key>
+				<integer>0</integer>
+			</dict>
+			<key>schemeIdentifier-containerName</key>
+			<string>CruzRoja project</string>
+			<key>schemeIdentifier-schemeName</key>
+			<string>CruzRoja</string>
+			<key>schemeIdentifier-sharedScheme</key>
+			<integer>1</integer>
+			<key>signature</key>
+			<string>Building project CruzRoja with scheme CruzRoja</string>
+			<key>timeStartedRecording</key>
+			<real>813455287.71476102</real>
+			<key>timeStoppedRecording</key>
+			<real>813455291.84902501</real>
+			<key>title</key>
+			<string>Building project CruzRoja with scheme CruzRoja</string>
+			<key>uniqueIdentifier</key>
+			<string>615839F9-6E9E-443E-AA1F-12DB9D2F85B2</string>
+		</dict>
+		<key>B09CD5F4-7B05-42AA-8848-2BE0349F30AB</key>
+		<dict>
+			<key>className</key>
+			<string>IDECommandLineBuildLog</string>
+			<key>documentTypeString</key>
+			<string>&lt;nil&gt;</string>
+			<key>domainType</key>
+			<string>Xcode.IDEActivityLogDomainType.BuildLog</string>
+			<key>fileName</key>
+			<string>B09CD5F4-7B05-42AA-8848-2BE0349F30AB.xcactivitylog</string>
+			<key>hasPrimaryLog</key>
+			<true/>
+			<key>primaryObservable</key>
+			<dict>
+				<key>highLevelStatus</key>
+				<string>S</string>
+				<key>totalNumberOfAnalyzerIssues</key>
+				<integer>0</integer>
+				<key>totalNumberOfErrors</key>
+				<integer>0</integer>
+				<key>totalNumberOfTestFailures</key>
+				<integer>0</integer>
+				<key>totalNumberOfWarnings</key>
+				<integer>0</integer>
+			</dict>
+			<key>schemeIdentifier-containerName</key>
+			<string>CruzRoja project</string>
+			<key>schemeIdentifier-schemeName</key>
+			<string>CruzRoja</string>
+			<key>schemeIdentifier-sharedScheme</key>
+			<integer>1</integer>
+			<key>signature</key>
+			<string>Building project CruzRoja with scheme CruzRoja</string>
+			<key>timeStartedRecording</key>
+			<real>813455629.904194</real>
+			<key>timeStoppedRecording</key>
+			<real>813455633.72425401</real>
+			<key>title</key>
+			<string>Building project CruzRoja with scheme CruzRoja</string>
+			<key>uniqueIdentifier</key>
+			<string>B09CD5F4-7B05-42AA-8848-2BE0349F30AB</string>
+		</dict>
+		<key>D4189E80-48C2-4396-A0EE-A3C571B7A3FD</key>
+		<dict>
+			<key>className</key>
+			<string>IDECommandLineBuildLog</string>
+			<key>documentTypeString</key>
+			<string>&lt;nil&gt;</string>
+			<key>domainType</key>
+			<string>Xcode.IDEActivityLogDomainType.BuildLog</string>
+			<key>fileName</key>
+			<string>D4189E80-48C2-4396-A0EE-A3C571B7A3FD.xcactivitylog</string>
+			<key>hasPrimaryLog</key>
+			<true/>
+			<key>primaryObservable</key>
+			<dict>
+				<key>highLevelStatus</key>
+				<string>S</string>
+				<key>totalNumberOfAnalyzerIssues</key>
+				<integer>0</integer>
+				<key>totalNumberOfErrors</key>
+				<integer>0</integer>
+				<key>totalNumberOfTestFailures</key>
+				<integer>0</integer>
+				<key>totalNumberOfWarnings</key>
+				<integer>0</integer>
+			</dict>
+			<key>schemeIdentifier-containerName</key>
+			<string>CruzRoja project</string>
+			<key>schemeIdentifier-schemeName</key>
+			<string>CruzRoja</string>
+			<key>schemeIdentifier-sharedScheme</key>
+			<integer>1</integer>
+			<key>signature</key>
+			<string>Building project CruzRoja with scheme CruzRoja</string>
+			<key>timeStartedRecording</key>
+			<real>813455054.81349695</real>
+			<key>timeStoppedRecording</key>
+			<real>813455057.96265495</real>
+			<key>title</key>
+			<string>Building project CruzRoja with scheme CruzRoja</string>
+			<key>uniqueIdentifier</key>
+			<string>D4189E80-48C2-4396-A0EE-A3C571B7A3FD</string>
+		</dict>
+	</dict>
+</dict>
+</plist>
