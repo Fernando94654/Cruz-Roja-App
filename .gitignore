@@ -7,3 +7,7 @@ build/
 DerivedData/
 xcuserdata/
 .DS_Store
+android/.gradle/
+android/.kotlin/
+android/**/build/
+local.properties
