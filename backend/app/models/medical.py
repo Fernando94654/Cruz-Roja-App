@@ -1,8 +1,8 @@
 import enum
 import uuid
-from datetime import datetime
+from datetime import date, datetime
 
-from sqlalchemy import DateTime, Enum, ForeignKey, LargeBinary, String, func, text
+from sqlalchemy import Date, DateTime, Enum, ForeignKey, LargeBinary, String, func, text
 from sqlalchemy.orm import Mapped, mapped_column
 
 from app.db import Base
@@ -24,10 +24,13 @@ class MedicalProfile(Base):
     __tablename__ = "medical_profiles"
 
     user_id: Mapped[uuid.UUID] = mapped_column(ForeignKey("users.id", ondelete="CASCADE"), primary_key=True)
+    full_name: Mapped[str] = mapped_column(String(120), server_default="")
+    date_of_birth: Mapped[date | None] = mapped_column(Date)
+    # Null means unknown
     blood_type: Mapped[BloodType | None] = mapped_column(
         Enum(BloodType, name="blood_type", values_callable=lambda e: [m.value for m in e])
     )
-    # Encrypted by the backend (app.crypto)
+    # Encrypted JSON lists (app.crypto.encrypt_list)
     allergies: Mapped[bytes | None] = mapped_column(LargeBinary)
     conditions: Mapped[bytes | None] = mapped_column(LargeBinary)
     medications: Mapped[bytes | None] = mapped_column(LargeBinary)
@@ -46,3 +49,4 @@ class EmergencyContact(Base):
     name: Mapped[str] = mapped_column(String(120))
     relationship: Mapped[str | None] = mapped_column(String(60))
     phone: Mapped[str] = mapped_column(String(20))
+    position: Mapped[int] = mapped_column(default=0, server_default="0")

@@ -1,0 +1,234 @@
+import SwiftUI
+
+struct FirstAidView: View {
+    @State private var viewModel: FirstAidViewModel
+    @FocusState private var isInputFocused: Bool
+
+    init(viewModel: FirstAidViewModel) {
+        _viewModel = State(initialValue: viewModel)
+    }
+
+    var body: some View {
+        VStack(spacing: 0) {
+            ScrollViewReader { proxy in
+                ScrollView {
+                    VStack(alignment: .leading, spacing: 16) {
+                        AmbulanceStatusBar(ambulance: viewModel.ambulance)
+
+                        if viewModel.messages.isEmpty {
+                            intro
+                        }
+                        ForEach(viewModel.messages) { message in
+                            bubble(message).id(message.id)
+                        }
+                        if viewModel.isThinking {
+                            HStack(spacing: 10) {
+                                ProgressView()
+                                Text("Buscando en el material de Cruz Roja…")
+                                    .font(.subheadline)
+                                    .foregroundStyle(.secondary)
+                            }
+                            .padding(12)
+                            .background(.gray.opacity(0.12), in: RoundedRectangle(cornerRadius: 14))
+                            .id("thinking")
+                        }
+                    }
+                    .padding()
+                }
+                .scrollDismissesKeyboard(.interactively)
+                .onChange(of: viewModel.messages) {
+                    withAnimation { proxy.scrollTo(viewModel.messages.last?.id, anchor: .bottom) }
+                }
+                .onChange(of: viewModel.isThinking) {
+                    if viewModel.isThinking { withAnimation { proxy.scrollTo("thinking", anchor: .bottom) } }
+                }
+            }
+
+            inputBar
+        }
+        .navigationTitle("Primeros auxilios")
+        .navigationBarTitleDisplayMode(.inline)
+        .toolbar {
+            if !viewModel.messages.isEmpty {
+                Button("Nueva") { viewModel.reset() }
+            }
+        }
+        .onAppear { viewModel.start() }
+        .onDisappear { viewModel.stop() }
+    }
+
+    private var intro: some View {
+        VStack(alignment: .leading, spacing: 14) {
+            Text("Describe la emergencia")
+                .font(.brand(30))
+            Text("Escribe o habla. El asistente busca en el material de Cruz Roja y te guía paso a paso por voz.")
+                .foregroundStyle(.secondary)
+
+            Label("RAG sobre manuales de Cruz Roja · demo", systemImage: "books.vertical.fill")
+                .font(.caption.weight(.semibold))
+                .foregroundStyle(Color.brandRed)
+                .padding(.horizontal, 10)
+                .padding(.vertical, 6)
+                .background(Color.brandRed.opacity(0.1), in: Capsule())
+
+            ForEach(viewModel.suggestions, id: \.self) { suggestion in
+                Button {
+                    send(suggestion)
+                } label: {
+                    Text(suggestion)
+                        .frame(maxWidth: .infinity, alignment: .leading)
+                        .padding(12)
+                        .background(.gray.opacity(0.12), in: RoundedRectangle(cornerRadius: 12))
+                }
+                .buttonStyle(.plain)
+            }
+
+            Text("O elige el tipo de emergencia")
+                .font(.subheadline.weight(.medium))
+                .foregroundStyle(.secondary)
+                .padding(.top, 6)
+
+            ScrollView(.horizontal, showsIndicators: false) {
+                HStack(spacing: 8) {
+                    ForEach(viewModel.guides) { guide in
+                        NavigationLink(value: EmergencyRoute.guide(guide)) {
+                            Label(guide.title, systemImage: guide.icon)
+                                .font(.subheadline)
+                                .padding(.horizontal, 12)
+                                .padding(.vertical, 8)
+                                .background(.gray.opacity(0.12), in: Capsule())
+                        }
+                        .buttonStyle(.plain)
+                    }
+                }
+            }
+
+            Text("Basado en protocolos de Cruz Roja. No sustituye un curso certificado.")
+                .font(.footnote)
+                .foregroundStyle(.secondary)
+        }
+    }
+
+    @ViewBuilder
+    private func bubble(_ message: ChatMessage) -> some View {
+        switch message {
+        case .user(_, let text):
+            HStack {
+                Spacer(minLength: 40)
+                Text(text)
+                    .padding(12)
+                    .foregroundStyle(.white)
+                    .background(Color.brandRed, in: RoundedRectangle(cornerRadius: 16))
+            }
+        case .assistant(let answer):
+            AnswerCard(answer: answer, viewModel: viewModel)
+        }
+    }
+
+    private var inputBar: some View {
+        HStack(spacing: 10) {
+            TextField(viewModel.isListening ? "Escuchando…" : "¿Qué está pasando?", text: $viewModel.draft, axis: .vertical)
+                .lineLimit(1...4)
+                .focused($isInputFocused)
+                .padding(.horizontal, 14)
+                .padding(.vertical, 10)
+                .background(.gray.opacity(0.12), in: RoundedRectangle(cornerRadius: 20))
+                .onSubmit { send(viewModel.draft) }
+
+            Button {
+                if viewModel.hasDraft {
+                    send(viewModel.draft)
+                } else {
+                    isInputFocused = false
+                    Task { await viewModel.dictate() }
+                }
+            } label: {
+                Image(systemName: viewModel.hasDraft ? "arrow.up" : viewModel.isListening ? "waveform" : "mic.fill")
+                    .font(.title3.weight(.semibold))
+                    .foregroundStyle(.white)
+                    .frame(width: 46, height: 46)
+                    .background(viewModel.isListening ? Color.black : Color.brandRed, in: Circle())
+                    .symbolEffect(.variableColor.iterative, isActive: viewModel.isListening)
+            }
+            .disabled(viewModel.isListening || viewModel.isThinking)
+        }
+        .padding(.horizontal)
+        .padding(.vertical, 10)
+        .background(.bar)
+    }
+
+    private func send(_ text: String) {
+        isInputFocused = false
+        Task { await viewModel.send(text) }
+    }
+}
+
+struct AnswerCard: View {
+    let answer: AssistantAnswer
+    let viewModel: FirstAidViewModel
+
+    private var isSpeaking: Bool { viewModel.speech.isSpeaking }
+
+    var body: some View {
+        VStack(alignment: .leading, spacing: 12) {
+            if let guide = answer.guide {
+                Label(guide.title, systemImage: guide.icon)
+                    .font(.headline)
+                    .foregroundStyle(Color.brandRed)
+            }
+
+            Text(answer.text)
+
+            VStack(alignment: .leading, spacing: 6) {
+                Text("Fuentes consultadas")
+                    .font(.caption.weight(.semibold))
+                    .foregroundStyle(.secondary)
+                ForEach(answer.sources) { source in
+                    HStack(alignment: .top, spacing: 8) {
+                        Image(systemName: "doc.text.fill")
+                            .foregroundStyle(Color.brandRed)
+                        VStack(alignment: .leading, spacing: 2) {
+                            Text("\(source.document) · pág. \(source.page)")
+                                .font(.caption.weight(.semibold))
+                            Text("“\(source.excerpt)”")
+                                .font(.caption)
+                                .foregroundStyle(.secondary)
+                                .lineLimit(2)
+                        }
+                    }
+                }
+            }
+            .padding(10)
+            .frame(maxWidth: .infinity, alignment: .leading)
+            .background(.white, in: RoundedRectangle(cornerRadius: 10))
+
+            HStack {
+                Button {
+                    viewModel.toggleSpeech(for: answer)
+                } label: {
+                    Label(isSpeaking ? "Detener" : "Escuchar", systemImage: isSpeaking ? "stop.fill" : "speaker.wave.2.fill")
+                }
+                .buttonStyle(.bordered)
+                .tint(.primary)
+
+                if let guide = answer.guide {
+                    NavigationLink(value: EmergencyRoute.guide(guide)) {
+                        Label("Iniciar guía por voz", systemImage: "play.fill")
+                    }
+                    .buttonStyle(.borderedProminent)
+                    .tint(.black)
+                }
+            }
+        }
+        .padding()
+        .background(.gray.opacity(0.12), in: RoundedRectangle(cornerRadius: 16))
+    }
+}
+
+#Preview {
+    let container = AppContainer.preview
+    NavigationStack {
+        FirstAidView(viewModel: container.makeFirstAidViewModel())
+            .emergencyDestinations(report: container.makeEmergencyReportViewModel(), container: container)
+    }
+}

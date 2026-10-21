@@ -22,6 +22,9 @@ class CommunityReportType(enum.Enum):
     traffic_light = "traffic_light"
     accident = "accident"
     fallen_tree = "fallen_tree"
+    blocked_street = "blocked_street"
+    power_outage = "power_outage"
+    fire = "fire"
     other = "other"
 
 
@@ -34,6 +37,7 @@ class OfficialAlert(Base):
     type: Mapped[str] = mapped_column(String(60))
     title: Mapped[str] = mapped_column(String(160))
     description: Mapped[str | None] = mapped_column(Text)
+    area_name: Mapped[str | None] = mapped_column(String(120))
     severity: Mapped[Severity] = mapped_column(Enum(Severity, name="severity"))
     area = mapped_column(Geography(geometry_type="MULTIPOLYGON", srid=4326, spatial_index=False), nullable=False)
     starts_at: Mapped[datetime] = mapped_column(DateTime(timezone=True))

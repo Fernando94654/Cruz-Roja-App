@@ -1,3 +1,4 @@
+import json
 import os
 
 from cryptography.fernet import Fernet
@@ -13,3 +14,11 @@ def encrypt(value: str | None) -> bytes | None:
 
 def decrypt(value: bytes | None) -> str | None:
     return None if value is None else _fernet().decrypt(value).decode()
+
+
+def encrypt_list(values: list[str]) -> bytes:
+    return _fernet().encrypt(json.dumps(values).encode())
+
+
+def decrypt_list(value: bytes | None) -> list[str]:
+    return [] if value is None else json.loads(_fernet().decrypt(value))

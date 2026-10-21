@@ -1,11 +1,12 @@
 """Development data mirroring the SwiftUI mockup."""
 
-from datetime import datetime, timedelta, timezone
+import uuid
+from datetime import date, datetime, timedelta, timezone
 
 from argon2 import PasswordHasher
 from sqlalchemy import text
 
-from app.crypto import encrypt
+from app.crypto import encrypt_list
 from app.db import SessionLocal
 from app.models import (
     Circle,
@@ -23,6 +24,10 @@ from app.models.circles import CircleRole
 from app.models.medical import BloodType
 
 
+# Same id as APIConfig.demoUserID in the iOS app
+DEMO_USER_ID = uuid.UUID("00000000-0000-4000-8000-000000000001")
+
+
 def point(lat: float, lng: float) -> str:
     return f"SRID=4326;POINT({lng} {lat})"
 
@@ -34,7 +39,7 @@ def main():
     with SessionLocal.begin() as s:
         s.execute(text("TRUNCATE users, official_alerts, lessons CASCADE"))
 
-        me = User(email="user@example.com", password_hash=password, name="Demo User")
+        me = User(id=DEMO_USER_ID, email="user@example.com", password_hash=password, name="Demo User")
         family = [
             (User(email="mom@example.com", password_hash=password, name="Mom"), 25.6600, -100.3000),
             (User(email="dad@example.com", password_hash=password, name="Dad"), 25.6450, -100.2800),
@@ -45,12 +50,14 @@ def main():
 
         s.add(MedicalProfile(
             user_id=me.id,
+            full_name="María López",
+            date_of_birth=date(1958, 3, 14),
             blood_type=BloodType.o_pos,
-            allergies=encrypt("Penicillin"),
-            conditions=encrypt("Asthma"),
-            medications=encrypt("Salbutamol"),
+            allergies=encrypt_list(["Penicilina"]),
+            conditions=encrypt_list(["Asma"]),
+            medications=encrypt_list(["Salbutamol"]),
         ))
-        s.add(EmergencyContact(user_id=me.id, name="Daughter", relationship="Daughter", phone="8112345678"))
+        s.add(EmergencyContact(user_id=me.id, name="Ana López", relationship="Hija", phone="8112345678"))
 
         circle = Circle(name="Family", created_by=me.id)
         s.add(circle)
@@ -66,6 +73,7 @@ def main():
             type="rain",
             title="Heavy rain in your area",
             description="Avoid crossing flooded streets and stay somewhere safe.",
+            area_name="Monterrey",
             severity=Severity.high,
             area="SRID=4326;MULTIPOLYGON(((-100.35 25.60,-100.23 25.60,-100.23 25.72,-100.35 25.72,-100.35 25.60)))",
             starts_at=now - timedelta(minutes=20),
