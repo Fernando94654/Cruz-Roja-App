@@ -76,6 +76,11 @@ tests/
 }
 ```
 
+| POST | `/emergency-reports` | Stores a sent emergency report and returns `{id, share_url}` | 201, 422 |
+| GET | `/r/{token}` | Public HTML page for the operator: summary, map and details | 200, 404 |
+
+`share_url` uses `PUBLIC_BASE_URL` from `.env`; set it to an address the operator's phone can reach (e.g. `http://<LAN IP>:8000` and run uvicorn with `--host 0.0.0.0`).
+
 Validation: `full_name` required; `blood_type` is one of `A+ A- B+ B- AB+ AB- O+ O- unknown`; `date_of_birth` can't be in the future; phones must have 10 digits (only digits are stored); at most 20 items per list and 5 contacts; lists drop blanks and duplicates.
 
 Allergies, conditions and medications are stored encrypted. The demo user id matches `APIConfig.demoUserID` in the iOS app.
