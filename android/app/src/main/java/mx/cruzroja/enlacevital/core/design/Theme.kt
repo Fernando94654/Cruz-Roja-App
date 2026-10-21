@@ -24,6 +24,12 @@ fun EnlaceVitalTheme(content: @Composable () -> Unit) {
             onPrimary = Color.White,
             secondary = Color.Black,
             onSecondary = Color.White,
+            // Neutral grays instead of Material's tinted containers, closer to iOS controls
+            primaryContainer = Color(0xFFFDE3E1),
+            onPrimaryContainer = Color.Black,
+            secondaryContainer = Color(0xFFE5E5EA),
+            onSecondaryContainer = Color.Black,
+            surfaceVariant = Color(0xFFE5E5EA),
             background = Color.White,
             surface = Color.White,
             surfaceContainer = Color(0xFFF2F2F7),
