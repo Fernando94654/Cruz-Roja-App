@@ -1,0 +1,15 @@
+# Levanta PostgreSQL para desarrollo:  docker compose up -d
+services:
+  db:
+    image: postgres:16
+    environment:
+      POSTGRES_USER: cruzroja
+      POSTGRES_PASSWORD: cruzroja
+      POSTGRES_DB: cruzroja
+    ports:
+      - "5432:5432"
+    volumes:
+      - datos_db:/var/lib/postgresql/data
+
+volumes:
+  datos_db:
