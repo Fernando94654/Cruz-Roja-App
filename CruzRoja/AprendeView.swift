@@ -42,6 +42,7 @@ struct Miniatura: View {
 struct LeccionView: View {
     let leccion: Leccion
     @State private var avance = 0.0
+    private let voz = Voz.compartida
 
     var body: some View {
         ScrollView {
@@ -66,6 +67,31 @@ struct LeccionView: View {
                 Text(leccion.descripcion)
                     .foregroundStyle(.secondary)
 
+                ForEach(Array(leccion.pasos.enumerated()), id: \.offset) { i, paso in
+                    HStack(alignment: .top, spacing: 12) {
+                        Text("\(i + 1)")
+                            .font(.headline)
+                            .foregroundStyle(.white)
+                            .frame(width: 28, height: 28)
+                            .background(Color.rojo, in: Circle())
+                        Text(paso)
+                            .frame(maxWidth: .infinity, alignment: .leading)
+                    }
+                }
+
+                Button {
+                    if voz.hablando {
+                        voz.callar()
+                    } else {
+                        voz.decir(([leccion.titulo] + leccion.pasos).joined(separator: ". "))
+                    }
+                } label: {
+                    Label(voz.hablando ? "Detener" : "Escuchar lección",
+                          systemImage: voz.hablando ? "stop.fill" : "speaker.wave.2.fill")
+                }
+                .buttonStyle(.bordered)
+                .tint(.primary)
+
                 Divider()
 
                 Label("Lección certificada por instructores de Cruz Roja", systemImage: "checkmark.seal")
@@ -74,6 +100,7 @@ struct LeccionView: View {
             .padding()
         }
         .navigationBarTitleDisplayMode(.inline)
+        .onDisappear { voz.callar() }
     }
 }
 

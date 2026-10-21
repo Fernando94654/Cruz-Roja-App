@@ -7,12 +7,13 @@ struct EmergenciaView: View {
         case "reporte", "signos": return [.reporte]
         case "resumen", "enviado": return [.reporte, .resumen]
         case "auxilios": return [.reporte, .resumen, .auxilios]
+        case "guia": return [.reporte, .resumen, .auxilios, .guia(emergencias[0])]
         default: return []
         }
     }()
     @State private var reporte: Reporte = {
         let r = Reporte()
-        if ["reporte", "signos", "resumen", "enviado", "auxilios"].contains(demo) { r.dictar() }
+        if ["reporte", "signos", "resumen", "enviado", "auxilios", "guia"].contains(demo) { r.dictar() }
         if demo == "enviado" { r.enviado = true }
         return r
     }()
@@ -161,6 +162,7 @@ extension View {
             case .reporte: ReporteView(reporte: reporte)
             case .resumen: ResumenView(reporte: reporte)
             case .auxilios: PrimerosAuxiliosView()
+            case .guia(let e): GuiaView(emergencia: e)
             }
         }
     }
