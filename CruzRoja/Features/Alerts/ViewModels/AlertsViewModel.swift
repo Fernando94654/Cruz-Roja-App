@@ -3,46 +3,56 @@ import Observation
 
 @MainActor
 @Observable
-class AlertasViewModel {
+final class AlertsViewModel {
+    private(set) var officialAlerts: [OfficialAlert] = []
+    private(set) var reports: [CommunityReport] = []
+    var errorMessage: String?
 
-    var alertasOficiales = [
-        AlertaOficial(fuente: "SMN",
-                      titulo: "Lluvias intensas en el área metropolitana",
-                      zona: "Monterrey",
-                      fecha: Date().addingTimeInterval(-3600)),
-        AlertaOficial(fuente: "Protección Civil NL",
-                      titulo: "Evitar cruces inundables",
-                      zona: "San Nicolás",
-                      fecha: Date().addingTimeInterval(-7200))
-    ]
+    private let service: AlertsServicing
 
-    var reportes = [
-        ReporteVecinal(categoria: "Inundación",
-                       titulo: "Calle inundada",
-                       confirmaciones: 3,
-                       expira: Date().addingTimeInterval(3 * 3600)),
-        ReporteVecinal(categoria: "Árbol caído",
-                       titulo: "Árbol bloqueando un carril",
-                       confirmaciones: 1,
-                       expira: Date().addingTimeInterval(2 * 3600))
-    ]
-
-    var reportesVigentes: [ReporteVecinal] {
-        reportes.filter { $0.expira > Date() }
+    init(service: AlertsServicing) {
+        self.service = service
     }
 
-    func confirmar(_ reporte: ReporteVecinal) {
-        guard let i = reportes.firstIndex(where: { $0.id == reporte.id }) else { return }
-        if reportes[i].yaConfirme { return }
-        reportes[i].confirmaciones += 1
-        reportes[i].yaConfirme = true
+    var activeReports: [CommunityReport] {
+        reports.filter { $0.expiresAt > Date() }
     }
 
-    func agregarReporte(categoria: String, titulo: String) {
-        let nuevo = ReporteVecinal(categoria: categoria,
-                                   titulo: titulo,
-                                   confirmaciones: 0,
-                                   expira: Date().addingTimeInterval(4 * 3600))
-        reportes.insert(nuevo, at: 0)
+    func load() async {
+        do {
+            officialAlerts = try await service.fetchOfficialAlerts()
+            reports = try await service.fetchCommunityReports()
+        } catch {
+            errorMessage = error.localizedDescription
+        }
+    }
+
+    // Optimistic: counts the confirmation right away and reverts if the request fails
+    func confirm(_ report: CommunityReport) async {
+        guard let i = reports.firstIndex(where: { $0.id == report.id }), !reports[i].confirmedByMe else { return }
+        reports[i].confirmations += 1
+        reports[i].confirmedByMe = true
+        do {
+            try await service.confirm(reportID: report.id)
+        } catch {
+            if let j = reports.firstIndex(where: { $0.id == report.id }) {
+                reports[j].confirmations -= 1
+                reports[j].confirmedByMe = false
+            }
+            errorMessage = error.localizedDescription
+        }
+    }
+
+    func publish(category: CommunityReportCategory, title: String) async -> Bool {
+        let title = title.trimmingCharacters(in: .whitespacesAndNewlines)
+        guard !title.isEmpty else { return false }
+        do {
+            let report = try await service.publish(category: category, title: title)
+            reports.insert(report, at: 0)
+            return true
+        } catch {
+            errorMessage = error.localizedDescription
+            return false
+        }
     }
 }

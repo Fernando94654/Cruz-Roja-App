@@ -1,94 +1,84 @@
 import Foundation
 import Observation
 
-/// Lógica de la pantalla de perfil médico: carga, guarda y valida.
-/// Las vistas solo leen este estado y llaman a sus funciones.
 @MainActor
 @Observable
-final class PerfilViewModel {
-    enum Estado: Equatable {
-        case cargando
-        case vacio  // el usuario aún no tiene perfil
-        case listo
-        case error(String)
+final class MedicalProfileViewModel {
+    enum State: Equatable {
+        case loading
+        case empty
+        case ready
+        case failed(String)
     }
 
-    private(set) var perfil: PerfilMedico?
-    private(set) var estado: Estado = .cargando
-    /// `true` si no hubo conexión y se muestra la última copia guardada.
-    private(set) var usandoCopiaLocal = false
-    private(set) var guardando = false
-    /// Mensaje para la alerta cuando falla el guardado.
-    var mensajeError: String?
+    private(set) var profile: MedicalProfile?
+    private(set) var state: State = .loading
+    // True when offline and showing the cached copy
+    private(set) var isShowingCachedCopy = false
+    private(set) var isSaving = false
+    var errorMessage: String?
 
-    private let servicio: PerfilServicio
-    private let cache: PerfilCache
-    private let usuarioID: Int
+    private let service: MedicalProfileServicing
+    private let cache: MedicalProfileCache
+    private let userID: UUID
 
-    init(
-        servicio: PerfilServicio = PerfilServicioAPI(),
-        cache: PerfilCache = PerfilCache(),
-        usuarioID: Int = APIConfig.usuarioDemoID
-    ) {
-        self.servicio = servicio
+    init(service: MedicalProfileServicing, cache: MedicalProfileCache = MedicalProfileCache(), userID: UUID = APIConfig.demoUserID) {
+        self.service = service
         self.cache = cache
-        self.usuarioID = usuarioID
+        self.userID = userID
     }
 
-    /// Pide el perfil al API (GET). Si no hay conexión, usa la copia local.
-    func cargar() async {
-        if perfil == nil {
-            // Muestra de inmediato la copia local mientras responde el servidor.
-            perfil = cache.cargar()
-            estado = perfil == nil ? .cargando : .listo
+    // Shows the cached copy right away, then refreshes from the API
+    func load() async {
+        if profile == nil {
+            profile = cache.load()
+            state = profile == nil ? .loading : .ready
         }
 
         do {
-            let remoto = try await servicio.obtenerPerfil(usuarioID: usuarioID)
-            usandoCopiaLocal = false
-            perfil = remoto
-            if let remoto {
-                cache.guardar(remoto)
-                estado = .listo
+            let remote = try await service.fetchProfile(userID: userID)
+            isShowingCachedCopy = false
+            profile = remote
+            if let remote {
+                cache.save(remote)
+                state = .ready
             } else {
-                cache.borrar()
-                estado = .vacio
+                cache.clear()
+                state = .empty
             }
         } catch {
-            // Si la pantalla se cerró a media carga, no hay nada que mostrar.
             if Task.isCancelled { return }
-            if perfil != nil {
-                usandoCopiaLocal = true
-                estado = .listo
+            if profile != nil {
+                isShowingCachedCopy = true
+                state = .ready
             } else {
-                estado = .error(error.localizedDescription)
+                state = .failed(error.localizedDescription)
             }
         }
     }
 
-    /// Valida y guarda el perfil en el API (PUT).
-    /// Regresa `true` si se guardó, para que la vista se cierre.
+    // Returns true when saved so the editor can close
     @discardableResult
-    func guardar(_ borrador: PerfilMedico) async -> Bool {
-        let limpio = borrador.limpio()
-        let errores = limpio.erroresDeValidacion
-        guard errores.isEmpty else {
-            mensajeError = errores.joined(separator: "\n")
+    func save(_ draft: MedicalProfile) async -> Bool {
+        let cleaned = draft.cleaned()
+        let errors = cleaned.validationErrors
+        guard errors.isEmpty else {
+            errorMessage = errors.joined(separator: "\n")
             return false
         }
 
-        guardando = true
-        defer { guardando = false }
+        isSaving = true
+        defer { isSaving = false }
 
         do {
-            let guardado = try await servicio.guardarPerfil(limpio, usuarioID: usuarioID)
-            perfil = guardado
-            cache.guardar(guardado)
-            usandoCopiaLocal = false
-            estado = .listo
+            let saved = try await service.saveProfile(cleaned, userID: userID)
+            profile = saved
+            cache.save(saved)
+            isShowingCachedCopy = false
+            state = .ready
             return true
         } catch {
-            mensajeError = error.localizedDescription
+            errorMessage = error.localizedDescription
             return false
         }
     }

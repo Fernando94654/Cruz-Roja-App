@@ -1,77 +1,51 @@
-import SwiftUI
 import MapKit
+import SwiftUI
 
-struct FamiliaView: View {
-    @State private var ruta: [Pantalla] = []
-    @State private var preguntado = false
-    // el reporte ya lleva el perfil de mamá
-    @State private var reporte: Reporte = {
-        let r = Reporte()
-        r.paraQuien = "Para un familiar"
-        r.nombre = "Mamá"
-        r.motivo = "Ritmo cardiaco anormal"
-        return r
-    }()
+struct FamilyView: View {
+    let container: AppContainer
+    @State private var viewModel: FamilyViewModel
+    @State private var reportViewModel: EmergencyReportViewModel
+    @State private var path: [EmergencyRoute] = []
+
+    private static let mapCenter = Coordinate(latitude: 25.658, longitude: -100.295)
+
+    init(container: AppContainer) {
+        self.container = container
+        _viewModel = State(initialValue: container.makeFamilyViewModel())
+        _reportViewModel = State(initialValue: container.makeEmergencyReportViewModel())
+    }
 
     var body: some View {
-        NavigationStack(path: $ruta) {
+        NavigationStack(path: $path) {
             List {
-                Section {
-                    VStack(alignment: .leading, spacing: 12) {
-                        HStack(alignment: .top, spacing: 10) {
-                            Image(systemName: "heart.fill")
-                                .foregroundStyle(Color.rojo)
-                                .font(.title3)
-                            VStack(alignment: .leading, spacing: 2) {
-                                Text("Mamá registró un ritmo cardiaco anormal")
-                                    .font(.headline)
-                                Text("Hace 2 min · Apple Watch")
-                                    .font(.subheadline)
-                                    .foregroundStyle(.secondary)
-                            }
-                        }
-                        HStack {
-                            Button(preguntado ? "Enviado" : "¿Estás bien?") {
-                                preguntado = true
-                            }
-                            .buttonStyle(.bordered)
-                            .tint(.primary)
-                            .disabled(preguntado)
-
-                            Button("Reportar por ella") {
-                                ruta = [.reporte]
-                            }
-                            .buttonStyle(.borderedProminent)
-                            .tint(Color.rojo)
-                        }
-                    }
-                    .padding(.vertical, 6)
+                if let alert = viewModel.activeAlert {
+                    Section { alertCard(alert) }
                 }
 
                 Section("Mi círculo") {
-                    ForEach(familia) { f in
+                    ForEach(viewModel.members) { member in
                         HStack(spacing: 12) {
-                            Text(String(f.nombre.prefix(1)))
+                            Text(String(member.name.prefix(1)))
                                 .font(.headline)
                                 .foregroundStyle(.white)
                                 .frame(width: 38, height: 38)
-                                .background(f.alerta ? Color.rojo : Color.gray, in: Circle())
-                            Text(f.nombre)
+                                .background(member.hasAlert ? Color.brandRed : Color.gray, in: Circle())
+                            Text(member.name)
                             Spacer()
-                            Text(f.estado)
+                            Text(member.status)
                                 .font(.subheadline)
-                                .foregroundStyle(f.alerta ? Color.rojo : .secondary)
+                                .foregroundStyle(member.hasAlert ? Color.brandRed : .secondary)
                         }
                     }
                 }
 
                 Section("Ubicación compartida") {
                     Map(initialPosition: .region(MKCoordinateRegion(
-                        center: CLLocationCoordinate2D(latitude: 25.658, longitude: -100.295),
+                        center: CLLocationCoordinate2D(Self.mapCenter),
                         span: MKCoordinateSpan(latitudeDelta: 0.045, longitudeDelta: 0.045)))) {
-                        ForEach(familia) { f in
-                            Marker(f.nombre, coordinate: f.coordenada)
-                                .tint(f.alerta ? Color.rojo : .gray)
+                        ForEach(viewModel.members) { member in
+                            Marker(member.name, coordinate: CLLocationCoordinate2D(member.coordinate))
+                                .tint(member.hasAlert ? Color.brandRed : .gray)
                         }
                     }
                     .frame(height: 220)
@@ -79,11 +53,45 @@ struct FamiliaView: View {
                 }
             }
             .navigationTitle("Familia")
-            .pantallas(reporte)
+            .task { await viewModel.load() }
+            .emergencyDestinations(report: reportViewModel, container: container)
         }
+    }
+
+    private func alertCard(_ alert: FamilyAlert) -> some View {
+        VStack(alignment: .leading, spacing: 12) {
+            HStack(alignment: .top, spacing: 10) {
+                Image(systemName: "heart.fill")
+                    .foregroundStyle(Color.brandRed)
+                    .font(.title3)
+                VStack(alignment: .leading, spacing: 2) {
+                    Text(alert.title)
+                        .font(.headline)
+                    Text(alert.detail)
+                        .font(.subheadline)
+                        .foregroundStyle(.secondary)
+                }
+            }
+            HStack {
+                Button(viewModel.hasSentWellbeingCheck ? "Enviado" : "¿Estás bien?") {
+                    Task { await viewModel.sendWellbeingCheck() }
+                }
+                .buttonStyle(.bordered)
+                .tint(.primary)
+                .disabled(viewModel.hasSentWellbeingCheck)
+
+                Button("Reportar por ella") {
+                    reportViewModel = container.makeEmergencyReportViewModel(report: viewModel.reportForActiveAlert())
+                    path = [.report]
+                }
+                .buttonStyle(.borderedProminent)
+                .tint(Color.brandRed)
+            }
+        }
+        .padding(.vertical, 6)
     }
 }
 
 #Preview {
-    FamiliaView()
+    FamilyView(container: .preview)
 }

@@ -2,52 +2,50 @@ import AVFoundation
 
 @MainActor
 @Observable
-final class Voz: NSObject, AVSpeechSynthesizerDelegate {
-    static let compartida = Voz()
-
-    private(set) var hablando = false
-    var silenciada = false {
-        didSet { if silenciada { callar() } }
+final class SpeechService: NSObject, SpeechSynthesizing, AVSpeechSynthesizerDelegate {
+    private(set) var isSpeaking = false
+    var isMuted = false {
+        didSet { if isMuted { stop() } }
     }
 
-    @ObservationIgnored private let sintetizador = AVSpeechSynthesizer()
-    @ObservationIgnored nonisolated(unsafe) private var voz: AVSpeechSynthesisVoice?
+    @ObservationIgnored private let synthesizer = AVSpeechSynthesizer()
+    @ObservationIgnored nonisolated(unsafe) private var voice: AVSpeechSynthesisVoice?
 
-    private override init() {
+    override init() {
         super.init()
-        sintetizador.delegate = self
-        // buscar la voz bloquea el hilo principal, por eso se hace aparte
+        synthesizer.delegate = self
+        // Looking up the voice blocks the main thread, so it runs detached
         Task.detached(priority: .userInitiated) {
             try? AVAudioSession.sharedInstance().setCategory(.playback, mode: .spokenAudio, options: [.duckOthers])
-            self.voz = AVSpeechSynthesisVoice(language: "es-MX") ?? AVSpeechSynthesisVoice(language: "es-ES")
+            self.voice = AVSpeechSynthesisVoice(language: "es-MX") ?? AVSpeechSynthesisVoice(language: "es-ES")
         }
     }
 
-    func decir(_ texto: String) {
-        guard !silenciada else { return }
-        callar()
+    func speak(_ text: String) {
+        guard !isMuted else { return }
+        stop()
         try? AVAudioSession.sharedInstance().setActive(true)
-        let frase = AVSpeechUtterance(string: texto)
-        frase.voice = voz
-        sintetizador.speak(frase)
+        let utterance = AVSpeechUtterance(string: text)
+        utterance.voice = voice
+        synthesizer.speak(utterance)
     }
 
-    func callar() {
-        if sintetizador.isSpeaking {
-            sintetizador.stopSpeaking(at: .immediate)
+    func stop() {
+        if synthesizer.isSpeaking {
+            synthesizer.stopSpeaking(at: .immediate)
         }
-        hablando = false
+        isSpeaking = false
     }
 
     nonisolated func speechSynthesizer(_ synthesizer: AVSpeechSynthesizer, didStart utterance: AVSpeechUtterance) {
-        Task { @MainActor in self.hablando = true }
+        Task { @MainActor in self.isSpeaking = true }
     }
 
     nonisolated func speechSynthesizer(_ synthesizer: AVSpeechSynthesizer, didFinish utterance: AVSpeechUtterance) {
-        Task { @MainActor in self.hablando = false }
+        Task { @MainActor in self.isSpeaking = false }
     }
 
     nonisolated func speechSynthesizer(_ synthesizer: AVSpeechSynthesizer, didCancel utterance: AVSpeechUtterance) {
-        Task { @MainActor in self.hablando = false }
+        Task { @MainActor in self.isSpeaking = false }
     }
 }

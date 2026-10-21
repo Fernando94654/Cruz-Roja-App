@@ -1,50 +1,27 @@
 import SwiftUI
 
-enum Mensaje: Identifiable, Hashable {
-    case usuario(UUID, String)
-    case asistente(Respuesta)
+struct FirstAidView: View {
+    @State private var viewModel: FirstAidViewModel
+    @FocusState private var isInputFocused: Bool
 
-    var id: UUID {
-        switch self {
-        case .usuario(let id, _): id
-        case .asistente(let r): r.id
-        }
+    init(viewModel: FirstAidViewModel) {
+        _viewModel = State(initialValue: viewModel)
     }
-}
-
-struct PrimerosAuxiliosView: View {
-    @State private var texto = ""
-    @State private var mensajes: [Mensaje] = demo == "auxilios"
-        ? [.usuario(UUID(), "Me corté y sangra mucho"), .asistente(Asistente().buscar("sangra"))]
-        : []
-    @State private var pensando = false
-    @State private var escuchando = false
-    @FocusState private var enfocado: Bool
-
-    private let voz = Voz.compartida
-    private let ambulancia = Ambulancia.actual
-    private let asistente = Asistente()
-    private let sugerencias = [
-        "Mi papá no respira y no responde",
-        "Un niño se está atragantando",
-        "Me corté y sangra mucho",
-        "Se quemó con aceite",
-    ]
 
     var body: some View {
         VStack(spacing: 0) {
             ScrollViewReader { proxy in
                 ScrollView {
                     VStack(alignment: .leading, spacing: 16) {
-                        BarraAmbulancia(ambulancia: ambulancia)
+                        AmbulanceStatusBar(ambulance: viewModel.ambulance)
 
-                        if mensajes.isEmpty {
-                            inicio
+                        if viewModel.messages.isEmpty {
+                            intro
                         }
-                        ForEach(mensajes) { m in
-                            burbuja(m).id(m.id)
+                        ForEach(viewModel.messages) { message in
+                            bubble(message).id(message.id)
                         }
-                        if pensando {
+                        if viewModel.isThinking {
                             HStack(spacing: 10) {
                                 ProgressView()
                                 Text("Buscando en el material de Cruz Roja…")
@@ -53,55 +30,52 @@ struct PrimerosAuxiliosView: View {
                             }
                             .padding(12)
                             .background(.gray.opacity(0.12), in: RoundedRectangle(cornerRadius: 14))
-                            .id("pensando")
+                            .id("thinking")
                         }
                     }
                     .padding()
                 }
                 .scrollDismissesKeyboard(.interactively)
-                .onChange(of: mensajes) {
-                    withAnimation { proxy.scrollTo(mensajes.last?.id, anchor: .bottom) }
+                .onChange(of: viewModel.messages) {
+                    withAnimation { proxy.scrollTo(viewModel.messages.last?.id, anchor: .bottom) }
                 }
-                .onChange(of: pensando) {
-                    if pensando { withAnimation { proxy.scrollTo("pensando", anchor: .bottom) } }
+                .onChange(of: viewModel.isThinking) {
+                    if viewModel.isThinking { withAnimation { proxy.scrollTo("thinking", anchor: .bottom) } }
                 }
             }
 
-            barraEntrada
+            inputBar
         }
         .navigationTitle("Primeros auxilios")
         .navigationBarTitleDisplayMode(.inline)
         .toolbar {
-            if !mensajes.isEmpty {
-                Button("Nueva") {
-                    voz.callar()
-                    mensajes.removeAll()
-                }
+            if !viewModel.messages.isEmpty {
+                Button("Nueva") { viewModel.reset() }
             }
         }
-        .onAppear { ambulancia.solicitar() }
-        .onDisappear { voz.callar() }
+        .onAppear { viewModel.start() }
+        .onDisappear { viewModel.stop() }
     }
 
-    var inicio: some View {
+    private var intro: some View {
         VStack(alignment: .leading, spacing: 14) {
             Text("Describe la emergencia")
-                .font(.marca(30))
+                .font(.brand(30))
             Text("Escribe o habla. El asistente busca en el material de Cruz Roja y te guía paso a paso por voz.")
                 .foregroundStyle(.secondary)
 
             Label("RAG sobre manuales de Cruz Roja · demo", systemImage: "books.vertical.fill")
                 .font(.caption.weight(.semibold))
-                .foregroundStyle(Color.rojo)
+                .foregroundStyle(Color.brandRed)
                 .padding(.horizontal, 10)
                 .padding(.vertical, 6)
-                .background(Color.rojo.opacity(0.1), in: Capsule())
+                .background(Color.brandRed.opacity(0.1), in: Capsule())
 
-            ForEach(sugerencias, id: \.self) { s in
+            ForEach(viewModel.suggestions, id: \.self) { suggestion in
                 Button {
-                    enviar(s)
+                    send(suggestion)
                 } label: {
-                    Text(s)
+                    Text(suggestion)
                         .frame(maxWidth: .infinity, alignment: .leading)
                         .padding(12)
                         .background(.gray.opacity(0.12), in: RoundedRectangle(cornerRadius: 12))
@@ -116,9 +90,9 @@ struct PrimerosAuxiliosView: View {
 
             ScrollView(.horizontal, showsIndicators: false) {
                 HStack(spacing: 8) {
-                    ForEach(emergencias) { e in
-                        NavigationLink(value: Pantalla.guia(e)) {
-                            Label(e.titulo, systemImage: e.icono)
+                    ForEach(viewModel.guides) { guide in
+                        NavigationLink(value: EmergencyRoute.guide(guide)) {
+                            Label(guide.title, systemImage: guide.icon)
                                 .font(.subheadline)
                                 .padding(.horizontal, 12)
                                 .padding(.vertical, 8)
@@ -136,102 +110,87 @@ struct PrimerosAuxiliosView: View {
     }
 
     @ViewBuilder
-    func burbuja(_ m: Mensaje) -> some View {
-        switch m {
-        case .usuario(_, let t):
+    private func bubble(_ message: ChatMessage) -> some View {
+        switch message {
+        case .user(_, let text):
             HStack {
                 Spacer(minLength: 40)
-                Text(t)
+                Text(text)
                     .padding(12)
                     .foregroundStyle(.white)
-                    .background(Color.rojo, in: RoundedRectangle(cornerRadius: 16))
+                    .background(Color.brandRed, in: RoundedRectangle(cornerRadius: 16))
             }
-        case .asistente(let r):
-            TarjetaRespuesta(respuesta: r, voz: voz)
+        case .assistant(let answer):
+            AnswerCard(answer: answer, viewModel: viewModel)
         }
     }
 
-    var barraEntrada: some View {
+    private var inputBar: some View {
         HStack(spacing: 10) {
-            TextField(escuchando ? "Escuchando…" : "¿Qué está pasando?", text: $texto, axis: .vertical)
+            TextField(viewModel.isListening ? "Escuchando…" : "¿Qué está pasando?", text: $viewModel.draft, axis: .vertical)
                 .lineLimit(1...4)
-                .focused($enfocado)
+                .focused($isInputFocused)
                 .padding(.horizontal, 14)
                 .padding(.vertical, 10)
                 .background(.gray.opacity(0.12), in: RoundedRectangle(cornerRadius: 20))
-                .onSubmit { enviar(texto) }
+                .onSubmit { send(viewModel.draft) }
 
             Button {
-                if texto.trimmingCharacters(in: .whitespaces).isEmpty { dictar() } else { enviar(texto) }
+                if viewModel.hasDraft {
+                    send(viewModel.draft)
+                } else {
+                    isInputFocused = false
+                    Task { await viewModel.dictate() }
+                }
             } label: {
-                Image(systemName: !texto.trimmingCharacters(in: .whitespaces).isEmpty ? "arrow.up" : escuchando ? "waveform" : "mic.fill")
+                Image(systemName: viewModel.hasDraft ? "arrow.up" : viewModel.isListening ? "waveform" : "mic.fill")
                     .font(.title3.weight(.semibold))
                     .foregroundStyle(.white)
                     .frame(width: 46, height: 46)
-                    .background(escuchando ? Color.black : Color.rojo, in: Circle())
-                    .symbolEffect(.variableColor.iterative, isActive: escuchando)
+                    .background(viewModel.isListening ? Color.black : Color.brandRed, in: Circle())
+                    .symbolEffect(.variableColor.iterative, isActive: viewModel.isListening)
             }
-            .disabled(escuchando || pensando)
+            .disabled(viewModel.isListening || viewModel.isThinking)
         }
         .padding(.horizontal)
         .padding(.vertical, 10)
         .background(.bar)
     }
 
-    // texto fijo, no hay reconocimiento de voz real
-    func dictar() {
-        voz.callar()
-        enfocado = false
-        escuchando = true
-        Task {
-            try? await Task.sleep(for: .seconds(2))
-            escuchando = false
-            enviar("Mi abuela se desmayó y está mareada")
-        }
-    }
-
-    func enviar(_ t: String) {
-        let pregunta = t.trimmingCharacters(in: .whitespacesAndNewlines)
-        guard !pregunta.isEmpty, !pensando else { return }
-        texto = ""
-        enfocado = false
-        mensajes.append(.usuario(UUID(), pregunta))
-        pensando = true
-        Task {
-            let r = await asistente.responder(pregunta)
-            pensando = false
-            mensajes.append(.asistente(r))
-            voz.decir(r.texto)
-        }
+    private func send(_ text: String) {
+        isInputFocused = false
+        Task { await viewModel.send(text) }
     }
 }
 
-struct TarjetaRespuesta: View {
-    let respuesta: Respuesta
-    let voz: Voz
+struct AnswerCard: View {
+    let answer: AssistantAnswer
+    let viewModel: FirstAidViewModel
+
+    private var isSpeaking: Bool { viewModel.speech.isSpeaking }
 
     var body: some View {
         VStack(alignment: .leading, spacing: 12) {
-            if let e = respuesta.emergencia {
-                Label(e.titulo, systemImage: e.icono)
+            if let guide = answer.guide {
+                Label(guide.title, systemImage: guide.icon)
                     .font(.headline)
-                    .foregroundStyle(Color.rojo)
+                    .foregroundStyle(Color.brandRed)
             }
 
-            Text(respuesta.texto)
+            Text(answer.text)
 
             VStack(alignment: .leading, spacing: 6) {
                 Text("Fuentes consultadas")
                     .font(.caption.weight(.semibold))
                     .foregroundStyle(.secondary)
-                ForEach(respuesta.fuentes) { f in
+                ForEach(answer.sources) { source in
                     HStack(alignment: .top, spacing: 8) {
                         Image(systemName: "doc.text.fill")
-                            .foregroundStyle(Color.rojo)
+                            .foregroundStyle(Color.brandRed)
                         VStack(alignment: .leading, spacing: 2) {
-                            Text("\(f.documento) · pág. \(f.pagina)")
+                            Text("\(source.document) · pág. \(source.page)")
                                 .font(.caption.weight(.semibold))
-                            Text("“\(f.fragmento)”")
+                            Text("“\(source.excerpt)”")
                                 .font(.caption)
                                 .foregroundStyle(.secondary)
                                 .lineLimit(2)
@@ -245,15 +204,15 @@ struct TarjetaRespuesta: View {
 
             HStack {
                 Button {
-                    if voz.hablando { voz.callar() } else { voz.decir(respuesta.texto) }
+                    viewModel.toggleSpeech(for: answer)
                 } label: {
-                    Label(voz.hablando ? "Detener" : "Escuchar", systemImage: voz.hablando ? "stop.fill" : "speaker.wave.2.fill")
+                    Label(isSpeaking ? "Detener" : "Escuchar", systemImage: isSpeaking ? "stop.fill" : "speaker.wave.2.fill")
                 }
                 .buttonStyle(.bordered)
                 .tint(.primary)
 
-                if let e = respuesta.emergencia {
-                    NavigationLink(value: Pantalla.guia(e)) {
+                if let guide = answer.guide {
+                    NavigationLink(value: EmergencyRoute.guide(guide)) {
                         Label("Iniciar guía por voz", systemImage: "play.fill")
                     }
                     .buttonStyle(.borderedProminent)
@@ -267,8 +226,9 @@ struct TarjetaRespuesta: View {
 }
 
 #Preview {
+    let container = AppContainer.preview
     NavigationStack {
-        PrimerosAuxiliosView()
-            .pantallas(Reporte())
+        FirstAidView(viewModel: container.makeFirstAidViewModel())
+            .emergencyDestinations(report: container.makeEmergencyReportViewModel(), container: container)
     }
 }

@@ -2,15 +2,17 @@ import SwiftUI
 
 @main
 struct CruzRojaApp: App {
+    private let container = AppContainer.live
+
     init() {
-        let barra = UINavigationBar.appearance()
-        barra.largeTitleTextAttributes = [.font: UIFont(name: "HelveticaNeue-Bold", size: 34)!]
-        barra.titleTextAttributes = [.font: UIFont(name: "HelveticaNeue-Bold", size: 17)!]
+        let bar = UINavigationBar.appearance()
+        bar.largeTitleTextAttributes = [.font: UIFont(name: "HelveticaNeue-Bold", size: 34)!]
+        bar.titleTextAttributes = [.font: UIFont(name: "HelveticaNeue-Bold", size: 17)!]
     }
 
     var body: some Scene {
         WindowGroup {
-            ContentView()
+            RootView(container: container)
         }
     }
 }

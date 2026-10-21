@@ -1,39 +1,37 @@
 import SwiftUI
 
-struct GuiaView: View {
-    let emergencia: Emergencia
-    @State private var paso = 0
-    @State private var restante: Int?
-    @State private var latido = false
+struct GuideView: View {
+    @State private var viewModel: GuideViewModel
 
-    private let voz = Voz.compartida
-    private let ambulancia = Ambulancia.actual
+    init(viewModel: GuideViewModel) {
+        _viewModel = State(initialValue: viewModel)
+    }
 
-    var actual: PasoGuia { emergencia.pasos[paso] }
+    private var step: GuideStep { viewModel.step }
 
     var body: some View {
         VStack(alignment: .leading, spacing: 20) {
-            BarraAmbulancia(ambulancia: ambulancia)
+            AmbulanceStatusBar(ambulance: viewModel.ambulance)
 
             VStack(alignment: .leading, spacing: 8) {
-                Text("Paso \(paso + 1) de \(emergencia.pasos.count)")
+                Text("Paso \(viewModel.stepIndex + 1) de \(viewModel.guide.steps.count)")
                     .font(.subheadline.weight(.medium))
                     .foregroundStyle(.secondary)
-                ProgressView(value: Double(paso + 1), total: Double(emergencia.pasos.count))
-                    .tint(Color.rojo)
+                ProgressView(value: Double(viewModel.stepIndex + 1), total: Double(viewModel.guide.steps.count))
+                    .tint(Color.brandRed)
             }
 
             Spacer()
 
             HStack {
                 Spacer()
-                indicador
+                indicator
                 Spacer()
             }
 
-            Text(actual.titulo)
-                .font(.marca(28))
-            Text(actual.instruccion)
+            Text(step.title)
+                .font(.brand(28))
+            Text(step.instruction)
                 .font(.title3)
                 .foregroundStyle(.secondary)
                 .fixedSize(horizontal: false, vertical: true)
@@ -42,27 +40,27 @@ struct GuiaView: View {
 
             HStack(spacing: 12) {
                 Button {
-                    withAnimation { paso -= 1 }
+                    withAnimation { viewModel.previous() }
                 } label: {
                     Text("Anterior").frame(maxWidth: .infinity).frame(height: 44)
                 }
                 .buttonStyle(.bordered)
-                .disabled(paso == 0)
+                .disabled(viewModel.isFirstStep)
 
                 Button {
-                    voz.decir(actual.instruccion)
+                    viewModel.repeatInstruction()
                 } label: {
                     Image(systemName: "arrow.counterclockwise").frame(width: 44, height: 44)
                 }
                 .buttonStyle(.bordered)
 
                 Button {
-                    withAnimation { paso += 1 }
+                    withAnimation { viewModel.next() }
                 } label: {
                     Text("Siguiente").frame(maxWidth: .infinity).frame(height: 44)
                 }
                 .buttonStyle(.borderedProminent)
-                .disabled(paso == emergencia.pasos.count - 1)
+                .disabled(viewModel.isLastStep)
             }
             .tint(.black)
 
@@ -72,50 +70,47 @@ struct GuiaView: View {
                 .frame(maxWidth: .infinity)
         }
         .padding()
-        .navigationTitle(emergencia.titulo)
+        .navigationTitle(viewModel.guide.title)
         .navigationBarTitleDisplayMode(.inline)
         .toolbar {
             Button {
-                voz.silenciada.toggle()
+                viewModel.isMuted.toggle()
             } label: {
-                Image(systemName: voz.silenciada ? "speaker.slash.fill" : "speaker.wave.2.fill")
+                Image(systemName: viewModel.isMuted ? "speaker.slash.fill" : "speaker.wave.2.fill")
             }
             .tint(.primary)
         }
-        .task(id: paso) { await correrPaso() }
-        .task(id: paso) { await marcarRitmo() }
-        .onChange(of: ambulancia.llego) {
-            if ambulancia.llego {
-                voz.decir("La ambulancia llegó. Cuéntale a los paramédicos qué pasó y qué hiciste.")
-            }
-        }
-        .onAppear { ambulancia.solicitar() }
-        .onDisappear { voz.callar() }
-        .sensoryFeedback(.impact(weight: .heavy), trigger: latido)
+        .task(id: viewModel.stepIndex) { await viewModel.runStep() }
+        .task(id: viewModel.stepIndex) { await viewModel.runBeat() }
+        .onChange(of: viewModel.ambulance.hasArrived) { viewModel.announceArrivalIfNeeded() }
+        .onAppear { viewModel.start() }
+        .onDisappear { viewModel.stop() }
+        .sensoryFeedback(.impact(weight: .heavy), trigger: viewModel.beat)
     }
 
-    var indicador: some View {
+    private var indicator: some View {
         ZStack {
             Circle().fill(.gray.opacity(0.12))
-            if let total = actual.segundos, let restante {
+            if let total = step.seconds, let left = viewModel.secondsLeft {
                 Circle()
-                    .trim(from: 0, to: Double(restante) / Double(total))
-                    .stroke(Color.rojo, style: StrokeStyle(lineWidth: 8, lineCap: .round))
+                    .trim(from: 0, to: Double(left) / Double(total))
+                    .stroke(Color.brandRed, style: StrokeStyle(lineWidth: 8, lineCap: .round))
                     .rotationEffect(.degrees(-90))
-                    .animation(.linear(duration: 1), value: restante)
+                    .animation(.linear(duration: 1), value: left)
                     .padding(4)
             }
             VStack(spacing: 6) {
-                Image(systemName: actual.icono)
+                Image(systemName: step.icon)
                     .font(.system(size: 52))
-                    .foregroundStyle(Color.rojo)
-                    .scaleEffect(actual.ritmo != nil && latido ? 1.15 : 1)
-                if let restante {
-                    Text(String(format: "%d:%02d", restante / 60, restante % 60))
+                    .foregroundStyle(Color.brandRed)
+                    .scaleEffect(step.rate != nil && viewModel.beat ? 1.15 : 1)
+                    .animation(.easeOut(duration: 0.1), value: viewModel.beat)
+                if let left = viewModel.secondsLeft {
+                    Text(String(format: "%d:%02d", left / 60, left % 60))
                         .font(.title3.monospacedDigit().weight(.semibold))
                 }
-                if let ritmo = actual.ritmo {
-                    Text("\(ritmo) por minuto")
+                if let rate = step.rate {
+                    Text("\(rate) por minuto")
                         .font(.caption.weight(.semibold))
                         .foregroundStyle(.secondary)
                 }
@@ -123,27 +118,8 @@ struct GuiaView: View {
         }
         .frame(width: 190, height: 190)
     }
-
-    func correrPaso() async {
-        voz.decir("\(actual.titulo). \(actual.instruccion)")
-        restante = actual.segundos
-        while let r = restante, r > 0 {
-            try? await Task.sleep(for: .seconds(1))
-            if Task.isCancelled { return }
-            restante = r - 1
-        }
-        if restante == 0 { voz.decir("Tiempo cumplido.") }
-    }
-
-    func marcarRitmo() async {
-        guard let ritmo = actual.ritmo else { return }
-        while !Task.isCancelled {
-            try? await Task.sleep(for: .seconds(60.0 / Double(ritmo)))
-            withAnimation(.easeOut(duration: 0.1)) { latido.toggle() }
-        }
-    }
 }
 
 #Preview {
-    NavigationStack { GuiaView(emergencia: emergencias[0]) }
+    NavigationStack { GuideView(viewModel: AppContainer.preview.makeGuideViewModel(guide: FirstAidGuide.catalog[0])) }
 }

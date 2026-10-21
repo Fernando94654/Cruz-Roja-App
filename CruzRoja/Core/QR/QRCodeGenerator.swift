@@ -1,17 +1,16 @@
 import CoreImage.CIFilterBuiltins
 import UIKit
 
-enum GeneradorQR {
-    /// Genera la imagen del código QR para un texto.
-    /// Regresa `nil` si el texto es demasiado largo para caber en un QR.
-    static func imagen(de texto: String, escala: CGFloat = 10) -> UIImage? {
-        let filtro = CIFilter.qrCodeGenerator()
-        filtro.message = Data(texto.utf8)
-        filtro.correctionLevel = "M"  // tolera ~15 % del código dañado o sucio
+enum QRCodeGenerator {
+    // Returns nil when the text is too long to fit in a QR code
+    static func image(for text: String, scale: CGFloat = 10) -> UIImage? {
+        let filter = CIFilter.qrCodeGenerator()
+        filter.message = Data(text.utf8)
+        filter.correctionLevel = "M" // tolerates ~15% of the code being damaged
 
-        guard let salida = filtro.outputImage else { return nil }
-        let grande = salida.transformed(by: CGAffineTransform(scaleX: escala, y: escala))
-        guard let imagen = CIContext().createCGImage(grande, from: grande.extent) else { return nil }
-        return UIImage(cgImage: imagen)
+        guard let output = filter.outputImage else { return nil }
+        let scaled = output.transformed(by: CGAffineTransform(scaleX: scale, y: scale))
+        guard let image = CIContext().createCGImage(scaled, from: scaled.extent) else { return nil }
+        return UIImage(cgImage: image)
     }
 }

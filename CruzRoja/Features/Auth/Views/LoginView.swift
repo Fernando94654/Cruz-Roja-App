@@ -2,15 +2,15 @@ import SwiftUI
 
 struct LoginView: View {
     @Environment(\.dismiss) private var dismiss
-    @AppStorage("sesion") private var sesion = false
-    @AppStorage("correo") private var correoGuardado = ""
-    @State private var correo = ""
-    @State private var contrasena = ""
-    @State private var verContrasena = false
-    @State private var cargando = false
-    @FocusState private var campo: Campo?
+    @State private var viewModel: AuthViewModel
+    @State private var showsPassword = false
+    @FocusState private var field: Field?
 
-    enum Campo { case correo, contrasena }
+    enum Field { case email, password }
+
+    init(viewModel: AuthViewModel) {
+        _viewModel = State(initialValue: viewModel)
+    }
 
     var body: some View {
         ScrollView {
@@ -20,44 +20,44 @@ struct LoginView: View {
                         .font(.system(size: 34))
                         .foregroundStyle(.white)
                         .frame(width: 64, height: 64)
-                        .background(Color.rojo, in: RoundedRectangle(cornerRadius: 16))
+                        .background(Color.brandRed, in: RoundedRectangle(cornerRadius: 16))
 
                     Text("Inicia sesión")
-                        .font(.marca(34))
+                        .font(.brand(34))
                     Text("Guarda tu perfil médico para que los paramédicos sepan cómo atenderte.")
                         .foregroundStyle(.secondary)
                 }
                 .padding(.top, 40)
 
                 VStack(spacing: 14) {
-                    entrada(icono: "envelope") {
-                        TextField("Correo electrónico", text: $correo)
+                    inputField(icon: "envelope") {
+                        TextField("Correo electrónico", text: $viewModel.email)
                             .textContentType(.emailAddress)
                             .keyboardType(.emailAddress)
                             .textInputAutocapitalization(.never)
                             .autocorrectionDisabled()
-                            .focused($campo, equals: .correo)
+                            .focused($field, equals: .email)
                             .submitLabel(.next)
-                            .onSubmit { campo = .contrasena }
+                            .onSubmit { field = .password }
                     }
 
-                    entrada(icono: "lock") {
+                    inputField(icon: "lock") {
                         Group {
-                            if verContrasena {
-                                TextField("Contraseña", text: $contrasena)
+                            if showsPassword {
+                                TextField("Contraseña", text: $viewModel.password)
                             } else {
-                                SecureField("Contraseña", text: $contrasena)
+                                SecureField("Contraseña", text: $viewModel.password)
                             }
                         }
                         .textContentType(.password)
-                        .focused($campo, equals: .contrasena)
+                        .focused($field, equals: .password)
                         .submitLabel(.go)
-                        .onSubmit(entrar)
+                        .onSubmit(signIn)
 
                         Button {
-                            verContrasena.toggle()
+                            showsPassword.toggle()
                         } label: {
-                            Image(systemName: verContrasena ? "eye.slash" : "eye")
+                            Image(systemName: showsPassword ? "eye.slash" : "eye")
                                 .foregroundStyle(.gray)
                         }
                     }
@@ -67,20 +67,20 @@ struct LoginView: View {
                         .frame(maxWidth: .infinity, alignment: .trailing)
                 }
 
-                Button(action: entrar) {
+                Button(action: signIn) {
                     ZStack {
-                        if cargando {
+                        if viewModel.isLoading {
                             ProgressView().tint(.white)
                         } else {
-                            Text("Iniciar sesión").font(.marca(17))
+                            Text("Iniciar sesión").font(.brand(17))
                         }
                     }
                     .foregroundStyle(.white)
                     .frame(maxWidth: .infinity)
                     .frame(height: 54)
-                    .background(Color.rojo, in: RoundedRectangle(cornerRadius: 14))
+                    .background(Color.brandRed, in: RoundedRectangle(cornerRadius: 14))
                 }
-                .disabled(cargando)
+                .disabled(viewModel.isLoading)
 
                 HStack {
                     Rectangle().frame(height: 1)
@@ -89,8 +89,8 @@ struct LoginView: View {
                 }
                 .foregroundStyle(.gray.opacity(0.4))
 
-                // de mentira, solo para que se vea la opción
-                Button(action: entrar) {
+                // Placeholder until Sign in with Apple is wired
+                Button(action: signIn) {
                     Label("Continuar con Apple", systemImage: "apple.logo")
                         .font(.headline)
                         .foregroundStyle(.white)
@@ -131,32 +131,26 @@ struct LoginView: View {
         }
     }
 
-    func entrada<Contenido: View>(icono: String, @ViewBuilder contenido: () -> Contenido) -> some View {
+    private func inputField<Content: View>(icon: String, @ViewBuilder content: () -> Content) -> some View {
         HStack(spacing: 12) {
-            Image(systemName: icono)
+            Image(systemName: icon)
                 .foregroundStyle(.secondary)
                 .frame(width: 22)
-            contenido()
+            content()
         }
         .padding(.horizontal, 16)
         .frame(height: 54)
         .background(Color(.systemGray6), in: RoundedRectangle(cornerRadius: 14))
     }
 
-    // no hay backend, cualquier dato entra
-    func entrar() {
-        campo = nil
-        cargando = true
+    private func signIn() {
+        field = nil
         Task {
-            try? await Task.sleep(for: .seconds(1))
-            correoGuardado = correo.isEmpty ? "usuario@correo.com" : correo
-            withAnimation { sesion = true }
-            cargando = false
-            dismiss()
+            if await viewModel.signIn() { dismiss() }
         }
     }
 }
 
 #Preview {
-    LoginView()
+    LoginView(viewModel: AppContainer.preview.makeAuthViewModel())
 }

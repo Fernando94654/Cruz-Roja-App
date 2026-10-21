@@ -1,228 +1,216 @@
 import Foundation
 
-// MARK: - Tipo de sangre
-
-enum TipoSangre: String, Codable, CaseIterable, Identifiable, Sendable {
-    case aPositivo = "A+"
-    case aNegativo = "A-"
-    case bPositivo = "B+"
-    case bNegativo = "B-"
-    case abPositivo = "AB+"
-    case abNegativo = "AB-"
-    case oPositivo = "O+"
-    case oNegativo = "O-"
-    case desconocido
+enum BloodType: String, Codable, CaseIterable, Identifiable, Sendable {
+    case aPositive = "A+"
+    case aNegative = "A-"
+    case bPositive = "B+"
+    case bNegative = "B-"
+    case abPositive = "AB+"
+    case abNegative = "AB-"
+    case oPositive = "O+"
+    case oNegative = "O-"
+    case unknown
 
     var id: String { rawValue }
 
-    /// Texto que ve el usuario.
-    var etiqueta: String {
-        self == .desconocido ? "No lo sé" : rawValue
+    var label: String {
+        self == .unknown ? "No lo sé" : rawValue
     }
 }
 
-// MARK: - Contacto de emergencia
-
-struct ContactoEmergencia: Codable, Identifiable, Equatable, Hashable, Sendable {
-    /// Solo se usa dentro de la app para las listas; no se envía al API.
+struct EmergencyContact: Codable, Identifiable, Equatable, Hashable, Sendable {
+    // Local identity for lists; not sent to the API
     var id = UUID()
-    var nombre: String
-    var parentesco: String
-    var telefono: String
+    var name: String
+    var relationship: String
+    var phone: String
 
     enum CodingKeys: String, CodingKey {
-        case nombre, parentesco, telefono
+        case name, relationship, phone
     }
 
-    var telefonoFormateado: String {
-        PerfilMedico.formatearTelefono(telefono)
+    var formattedPhone: String {
+        MedicalProfile.formatPhone(phone)
     }
 }
 
-// MARK: - Perfil médico
+// Same shape as GET /users/{id}/medical-profile
+struct MedicalProfile: Equatable, Sendable {
+    var userID: UUID?
+    var fullName: String = ""
+    var dateOfBirth: Date?
+    var bloodType: BloodType = .unknown
+    var allergies: [String] = []
+    var conditions: [String] = []
+    var medications: [String] = []
+    var contacts: [EmergencyContact] = []
+    var updatedAt: Date?
 
-/// Datos médicos del usuario. Es el mismo formato que regresa el API:
-/// GET /usuarios/{id}/perfil
-struct PerfilMedico: Equatable, Sendable {
-    var usuarioID: Int?
-    var nombre: String = ""
-    var fechaNacimiento: Date?
-    var tipoSangre: TipoSangre = .desconocido
-    var alergias: [String] = []
-    var padecimientos: [String] = []
-    var medicamentos: [String] = []
-    var contactos: [ContactoEmergencia] = []
-    var actualizado: Date?
-
-    static let maximoContactos = 5
+    static let maxContacts = 5
 }
 
-// MARK: - Validación
+// MARK: - Validation
 
-extension PerfilMedico {
-    /// Deja solo los dígitos de un teléfono: "81 1234-5678" → "8112345678".
-    static func soloDigitos(_ texto: String) -> String {
-        String(texto.filter { $0.isASCII && $0.isNumber })
+extension MedicalProfile {
+    // "81 1234-5678" → "8112345678"
+    static func digitsOnly(_ text: String) -> String {
+        String(text.filter { $0.isASCII && $0.isNumber })
     }
 
-    /// Un teléfono en México tiene 10 dígitos.
-    static func telefonoValido(_ texto: String) -> Bool {
-        soloDigitos(texto).count == 10
+    // Mexican phone numbers have 10 digits
+    static func isValidPhone(_ text: String) -> Bool {
+        digitsOnly(text).count == 10
     }
 
-    /// "8112345678" → "81 1234 5678". Si no tiene 10 dígitos, lo deja igual.
-    static func formatearTelefono(_ texto: String) -> String {
-        let d = Array(soloDigitos(texto))
-        guard d.count == 10 else { return texto }
+    // "8112345678" → "81 1234 5678"; anything else is returned unchanged
+    static func formatPhone(_ text: String) -> String {
+        let d = Array(digitsOnly(text))
+        guard d.count == 10 else { return text }
         return "\(String(d[0..<2])) \(String(d[2..<6])) \(String(d[6..<10]))"
     }
 
-    /// Mensajes de lo que falta corregir. Vacío si el perfil se puede guardar.
-    var erroresDeValidacion: [String] {
-        var errores: [String] = []
-        if nombre.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty {
-            errores.append("Escribe el nombre de la persona.")
+    // User-facing messages of what must be fixed; empty when the profile can be saved
+    var validationErrors: [String] {
+        var errors: [String] = []
+        if fullName.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty {
+            errors.append("Escribe el nombre de la persona.")
         }
-        if let fecha = fechaNacimiento, fecha > Date() {
-            errores.append("La fecha de nacimiento no puede ser futura.")
+        if let dateOfBirth, dateOfBirth > Date() {
+            errors.append("La fecha de nacimiento no puede ser futura.")
         }
-        if contactos.count > Self.maximoContactos {
-            errores.append("Puedes registrar hasta \(Self.maximoContactos) contactos.")
+        if contacts.count > Self.maxContacts {
+            errors.append("Puedes registrar hasta \(Self.maxContacts) contactos.")
         }
-        for (i, contacto) in contactos.enumerated() {
-            let numero = "Contacto \(i + 1)"
-            if contacto.nombre.trimmingCharacters(in: .whitespaces).isEmpty {
-                errores.append("\(numero): escribe su nombre.")
+        for (i, contact) in contacts.enumerated() {
+            let label = "Contacto \(i + 1)"
+            if contact.name.trimmingCharacters(in: .whitespaces).isEmpty {
+                errors.append("\(label): escribe su nombre.")
             }
-            if contacto.parentesco.trimmingCharacters(in: .whitespaces).isEmpty {
-                errores.append("\(numero): escribe el parentesco.")
+            if contact.relationship.trimmingCharacters(in: .whitespaces).isEmpty {
+                errors.append("\(label): escribe el parentesco.")
             }
-            if !Self.telefonoValido(contacto.telefono) {
-                errores.append("\(numero): el teléfono debe tener 10 dígitos.")
+            if !Self.isValidPhone(contact.phone) {
+                errors.append("\(label): el teléfono debe tener 10 dígitos.")
             }
         }
-        return errores
+        return errors
     }
 
-    var esValido: Bool { erroresDeValidacion.isEmpty }
+    var isValid: Bool { validationErrors.isEmpty }
 
-    /// Copia lista para guardar: sin espacios de más, sin elementos vacíos
-    /// ni repetidos, y con los teléfonos solo en dígitos.
-    func limpio() -> PerfilMedico {
-        var copia = self
-        copia.nombre = nombre.trimmingCharacters(in: .whitespacesAndNewlines)
-        copia.alergias = Self.limpiarLista(alergias)
-        copia.padecimientos = Self.limpiarLista(padecimientos)
-        copia.medicamentos = Self.limpiarLista(medicamentos)
-        copia.contactos = contactos.map { contacto in
-            var c = contacto
-            c.nombre = c.nombre.trimmingCharacters(in: .whitespaces)
-            c.parentesco = c.parentesco.trimmingCharacters(in: .whitespaces)
-            c.telefono = Self.soloDigitos(c.telefono)
+    // Trimmed copy without empty or duplicate items and with digit-only phones
+    func cleaned() -> MedicalProfile {
+        var copy = self
+        copy.fullName = fullName.trimmingCharacters(in: .whitespacesAndNewlines)
+        copy.allergies = Self.cleanList(allergies)
+        copy.conditions = Self.cleanList(conditions)
+        copy.medications = Self.cleanList(medications)
+        copy.contacts = contacts.map { contact in
+            var c = contact
+            c.name = c.name.trimmingCharacters(in: .whitespaces)
+            c.relationship = c.relationship.trimmingCharacters(in: .whitespaces)
+            c.phone = Self.digitsOnly(c.phone)
             return c
         }
-        return copia
+        return copy
     }
 
-    static func limpiarLista(_ lista: [String]) -> [String] {
-        var vistos = Set<String>()
-        return lista.compactMap { elemento in
-            let texto = elemento.trimmingCharacters(in: .whitespacesAndNewlines)
-            guard !texto.isEmpty, vistos.insert(texto.lowercased()).inserted else { return nil }
-            return texto
+    static func cleanList(_ list: [String]) -> [String] {
+        var seen = Set<String>()
+        return list.compactMap { item in
+            let text = item.trimmingCharacters(in: .whitespacesAndNewlines)
+            guard !text.isEmpty, seen.insert(text.lowercased()).inserted else { return nil }
+            return text
         }
     }
 
-    /// Edad en años cumplidos a la fecha indicada.
-    func edad(al dia: Date = Date()) -> Int? {
-        guard let fechaNacimiento else { return nil }
-        return Calendar.current.dateComponents([.year], from: fechaNacimiento, to: dia).year
+    func age(on day: Date = Date()) -> Int? {
+        guard let dateOfBirth else { return nil }
+        return Calendar.current.dateComponents([.year], from: dateOfBirth, to: day).year
     }
 }
 
-// MARK: - Textos para el QR y el reporte
+// MARK: - QR and report text
 
-extension PerfilMedico {
-    /// Texto que va dentro del código QR. Cualquier cámara lo lee sin internet.
-    func textoQR(incluirContactos: Bool) -> String {
-        var lineas = ["CRUZ ROJA · PERFIL MÉDICO"]
-        lineas.append("Nombre: \(nombre)")
-        if let edad = edad() {
-            lineas.append("Edad: \(edad) años")
+extension MedicalProfile {
+    // Text inside the QR code; any camera reads it offline
+    func qrText(includeContacts: Bool) -> String {
+        var lines = ["CRUZ ROJA · PERFIL MÉDICO"]
+        lines.append("Nombre: \(fullName)")
+        if let age = age() {
+            lines.append("Edad: \(age) años")
         }
-        lineas.append("Sangre: \(tipoSangre.etiqueta)")
-        lineas.append("Alergias: \(Self.texto(de: alergias))")
-        lineas.append("Padecimientos: \(Self.texto(de: padecimientos))")
-        lineas.append("Medicamentos: \(Self.texto(de: medicamentos))")
-        if incluirContactos {
-            for c in contactos {
-                lineas.append("Contacto: \(c.nombre) (\(c.parentesco)) \(c.telefonoFormateado)")
+        lines.append("Sangre: \(bloodType.label)")
+        lines.append("Alergias: \(Self.text(for: allergies))")
+        lines.append("Padecimientos: \(Self.text(for: conditions))")
+        lines.append("Medicamentos: \(Self.text(for: medications))")
+        if includeContacts {
+            for c in contacts {
+                lines.append("Contacto: \(c.name) (\(c.relationship)) \(c.formattedPhone)")
             }
         }
-        return lineas.joined(separator: "\n")
+        return lines.joined(separator: "\n")
     }
 
-    /// Resumen de una línea para adjuntar al reporte de emergencia.
-    /// Ejemplo: "Sangre O+ · Alergias: Penicilina · Padecimientos: Asma · Medicamentos: Salbutamol"
-    var resumenParaReporte: String {
+    // One-line summary attached to emergency reports
+    var reportSummary: String {
         [
-            "Sangre \(tipoSangre.etiqueta)",
-            "Alergias: \(Self.texto(de: alergias))",
-            "Padecimientos: \(Self.texto(de: padecimientos))",
-            "Medicamentos: \(Self.texto(de: medicamentos))",
+            "Sangre \(bloodType.label)",
+            "Alergias: \(Self.text(for: allergies))",
+            "Padecimientos: \(Self.text(for: conditions))",
+            "Medicamentos: \(Self.text(for: medications))",
         ].joined(separator: " · ")
     }
 
-    static func texto(de lista: [String]) -> String {
-        lista.isEmpty ? "Ninguno registrado" : lista.joined(separator: ", ")
+    static func text(for list: [String]) -> String {
+        list.isEmpty ? "Ninguno registrado" : list.joined(separator: ", ")
     }
 }
 
 // MARK: - JSON
 
-// El API usa nombres en snake_case, la fecha de nacimiento como "AAAA-MM-DD"
-// y la fecha de actualización en ISO 8601. Se declara en una extensión para
-// conservar el inicializador por miembros (PerfilMedico(nombre: ...)).
-extension PerfilMedico: Codable {
+// Declared in an extension to keep the memberwise initializer
+extension MedicalProfile: Codable {
     enum CodingKeys: String, CodingKey {
-        case usuarioID = "usuario_id"
-        case nombre
-        case fechaNacimiento = "fecha_nacimiento"
-        case tipoSangre = "tipo_sangre"
-        case alergias, padecimientos, medicamentos, contactos, actualizado
+        case userID = "user_id"
+        case fullName = "full_name"
+        case dateOfBirth = "date_of_birth"
+        case bloodType = "blood_type"
+        case allergies, conditions, medications, contacts
+        case updatedAt = "updated_at"
     }
 
     init(from decoder: Decoder) throws {
         let c = try decoder.container(keyedBy: CodingKeys.self)
-        usuarioID = try c.decodeIfPresent(Int.self, forKey: .usuarioID)
-        nombre = try c.decodeIfPresent(String.self, forKey: .nombre) ?? ""
-        fechaNacimiento = try c.decodeIfPresent(String.self, forKey: .fechaNacimiento)
-            .flatMap { Self.formatoDia.date(from: $0) }
-        // Si el API agrega un valor nuevo, no truena: queda como "desconocido".
-        tipoSangre = (try? c.decode(TipoSangre.self, forKey: .tipoSangre)) ?? .desconocido
-        alergias = try c.decodeIfPresent([String].self, forKey: .alergias) ?? []
-        padecimientos = try c.decodeIfPresent([String].self, forKey: .padecimientos) ?? []
-        medicamentos = try c.decodeIfPresent([String].self, forKey: .medicamentos) ?? []
-        contactos = try c.decodeIfPresent([ContactoEmergencia].self, forKey: .contactos) ?? []
-        actualizado = try c.decodeIfPresent(String.self, forKey: .actualizado)
-            .flatMap { Self.formatoISO.date(from: $0) }
+        userID = try c.decodeIfPresent(UUID.self, forKey: .userID)
+        fullName = try c.decodeIfPresent(String.self, forKey: .fullName) ?? ""
+        dateOfBirth = try c.decodeIfPresent(String.self, forKey: .dateOfBirth)
+            .flatMap { Self.dayFormatter.date(from: $0) }
+        // Unknown values from a newer API fall back to .unknown instead of failing
+        bloodType = (try? c.decode(BloodType.self, forKey: .bloodType)) ?? .unknown
+        allergies = try c.decodeIfPresent([String].self, forKey: .allergies) ?? []
+        conditions = try c.decodeIfPresent([String].self, forKey: .conditions) ?? []
+        medications = try c.decodeIfPresent([String].self, forKey: .medications) ?? []
+        contacts = try c.decodeIfPresent([EmergencyContact].self, forKey: .contacts) ?? []
+        updatedAt = try c.decodeIfPresent(String.self, forKey: .updatedAt)
+            .flatMap { ISO8601DateFormatter().date(from: $0) }
     }
 
     func encode(to encoder: Encoder) throws {
         var c = encoder.container(keyedBy: CodingKeys.self)
-        try c.encodeIfPresent(usuarioID, forKey: .usuarioID)
-        try c.encode(nombre, forKey: .nombre)
-        try c.encodeIfPresent(fechaNacimiento.map { Self.formatoDia.string(from: $0) }, forKey: .fechaNacimiento)
-        try c.encode(tipoSangre, forKey: .tipoSangre)
-        try c.encode(alergias, forKey: .alergias)
-        try c.encode(padecimientos, forKey: .padecimientos)
-        try c.encode(medicamentos, forKey: .medicamentos)
-        try c.encode(contactos, forKey: .contactos)
-        try c.encodeIfPresent(actualizado.map { Self.formatoISO.string(from: $0) }, forKey: .actualizado)
+        try c.encodeIfPresent(userID, forKey: .userID)
+        try c.encode(fullName, forKey: .fullName)
+        try c.encodeIfPresent(dateOfBirth.map { Self.dayFormatter.string(from: $0) }, forKey: .dateOfBirth)
+        try c.encode(bloodType, forKey: .bloodType)
+        try c.encode(allergies, forKey: .allergies)
+        try c.encode(conditions, forKey: .conditions)
+        try c.encode(medications, forKey: .medications)
+        try c.encode(contacts, forKey: .contacts)
+        try c.encodeIfPresent(updatedAt.map { ISO8601DateFormatter().string(from: $0) }, forKey: .updatedAt)
     }
 
-    /// "1958-03-14"
-    static var formatoDia: DateFormatter {
+    // "1958-03-14"
+    static var dayFormatter: DateFormatter {
         let f = DateFormatter()
         f.calendar = Calendar(identifier: .gregorian)
         f.locale = Locale(identifier: "en_US_POSIX")
@@ -230,9 +218,16 @@ extension PerfilMedico: Codable {
         f.dateFormat = "yyyy-MM-dd"
         return f
     }
+}
 
-    /// "2026-10-21T18:14:07Z"
-    static var formatoISO: ISO8601DateFormatter {
-        ISO8601DateFormatter()
-    }
+extension MedicalProfile {
+    static let sample = MedicalProfile(
+        fullName: "María López",
+        dateOfBirth: dayFormatter.date(from: "1958-03-14"),
+        bloodType: .oPositive,
+        allergies: ["Penicilina"],
+        conditions: ["Asma"],
+        medications: ["Salbutamol"],
+        contacts: [EmergencyContact(name: "Ana López", relationship: "Hija", phone: "8112345678")]
+    )
 }

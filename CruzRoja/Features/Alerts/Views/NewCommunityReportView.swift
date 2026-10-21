@@ -1,40 +1,48 @@
 import SwiftUI
 
-struct NuevoReporteView: View {
-
-    var vm: AlertasViewModel
-    @Environment(\.dismiss) var dismiss
-
-    @State var categoria = "Inundación"
-    @State var titulo = ""
-
-    let categorias = ["Inundación", "Calle bloqueada", "Árbol caído", "Apagón", "Incendio", "Otro"]
+struct NewCommunityReportView: View {
+    let viewModel: AlertsViewModel
+    @Environment(\.dismiss) private var dismiss
+    @State private var category: CommunityReportCategory = .flood
+    @State private var title = ""
+    @State private var isPublishing = false
 
     var body: some View {
-
         NavigationStack {
-
             Form {
-                Picker("Tipo", selection: $categoria) {
-                    ForEach(categorias, id: \.self) { c in
-                        Text(c).tag(c)
+                Picker("Tipo", selection: $category) {
+                    ForEach(CommunityReportCategory.allCases) { category in
+                        Text(category.label).tag(category)
                     }
                 }
-                TextField("¿Qué pasó? Ej. Calle inundada", text: $titulo)
+                TextField("¿Qué pasó? Ej. Calle inundada", text: $title, axis: .vertical)
+                Label("Se usará tu ubicación actual", systemImage: "location.fill")
+                    .foregroundStyle(.secondary)
             }
             .navigationTitle("Nuevo reporte")
+            .navigationBarTitleDisplayMode(.inline)
             .toolbar {
                 ToolbarItem(placement: .cancellationAction) {
                     Button("Cancelar") { dismiss() }
                 }
                 ToolbarItem(placement: .confirmationAction) {
-                    Button("Publicar") {
-                        vm.agregarReporte(categoria: categoria, titulo: titulo)
-                        dismiss()
-                    }
-                    .disabled(titulo.isEmpty)
+                    Button("Publicar", action: publish)
+                        .disabled(title.trimmingCharacters(in: .whitespaces).isEmpty || isPublishing)
                 }
             }
         }
+        .presentationDetents([.medium])
     }
+
+    private func publish() {
+        isPublishing = true
+        Task {
+            if await viewModel.publish(category: category, title: title) { dismiss() }
+            isPublishing = false
+        }
+    }
+}
+
+#Preview {
+    NewCommunityReportView(viewModel: AppContainer.preview.makeAlertsViewModel())
 }

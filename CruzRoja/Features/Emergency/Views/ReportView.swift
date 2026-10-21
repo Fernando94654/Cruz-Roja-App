@@ -1,81 +1,76 @@
 import SwiftUI
 
-struct ReporteView: View {
-    @Bindable var reporte: Reporte
-    @State private var escuchando = false
+struct ReportView: View {
+    @Bindable var viewModel: EmergencyReportViewModel
 
     var body: some View {
         ScrollViewReader { scroll in
-        Form {
-            Section("¿Para quién?") {
-                Picker("¿Para quién?", selection: $reporte.paraQuien) {
-                    ForEach(["Para mí", "Para otra persona", "Para un familiar"], id: \.self) {
-                        Text($0)
+            Form {
+                Section("¿Para quién?") {
+                    Picker("¿Para quién?", selection: $viewModel.report.reportingFor) {
+                        ForEach(ReportingFor.allCases, id: \.self) {
+                            Text($0.label)
+                        }
+                    }
+                    .pickerStyle(.segmented)
+                    .listRowBackground(Color.clear)
+                    .listRowInsets(EdgeInsets())
+
+                    if let name = viewModel.report.patientName {
+                        Label("Perfil médico de \(name) cargado", systemImage: "person.text.rectangle")
+                            .font(.subheadline)
                     }
                 }
-                .pickerStyle(.segmented)
-                .listRowBackground(Color.clear)
-                .listRowInsets(EdgeInsets())
 
-                if let nombre = reporte.nombre {
-                    Label("Perfil médico de \(nombre) cargado", systemImage: "person.text.rectangle")
-                        .font(.subheadline)
-                }
-            }
-
-            Section {
-                Button {
-                    escuchando = true
-                    Task {
-                        try? await Task.sleep(for: .seconds(1.5))
-                        withAnimation { reporte.dictar() }
-                        escuchando = false
+                Section {
+                    Button {
+                        Task { await viewModel.dictate() }
+                    } label: {
+                        Label(viewModel.isListening ? "Escuchando…" : "Dictar", systemImage: "mic.fill")
+                            .frame(maxWidth: .infinity)
                     }
-                } label: {
-                    Label(escuchando ? "Escuchando…" : "Dictar", systemImage: "mic.fill")
-                        .frame(maxWidth: .infinity)
+                    .disabled(viewModel.isListening)
+                } footer: {
+                    Text("Describe lo que pasa y llenamos el reporte por ti.")
                 }
-                .disabled(escuchando)
-            } footer: {
-                Text("Describe lo que pasa y llenamos el reporte por ti.")
-            }
 
-            Section("Incidente") {
-                campo("Motivo", $reporte.motivo)
-                Stepper("Lesionados: \(reporte.lesionados)", value: $reporte.lesionados, in: 1...20)
-                campo("Lesión principal", $reporte.lesion)
-                campo("Lugar", $reporte.lugar)
-            }
+                Section("Incidente") {
+                    textField("Motivo", $viewModel.report.reason)
+                    Stepper("Lesionados: \(viewModel.report.injuredCount)", value: $viewModel.report.injuredCount, in: 1...20)
+                    textField("Lesión principal", $viewModel.report.injury)
+                    textField("Lugar", $viewModel.report.place)
+                }
 
-            Section("Ubicación") {
-                Label {
-                    VStack(alignment: .leading) {
-                        Text(direccion)
-                        Text("Automática · ±5 m")
-                            .font(.caption)
-                            .foregroundStyle(.secondary)
+                Section("Ubicación") {
+                    Label {
+                        VStack(alignment: .leading) {
+                            Text(viewModel.location.address)
+                            Text("Automática · ±\(viewModel.location.accuracyMeters) m")
+                                .font(.caption)
+                                .foregroundStyle(.secondary)
+                        }
+                    } icon: {
+                        Image(systemName: "location.fill")
                     }
-                } icon: {
-                    Image(systemName: "location.fill")
+                    textField("Referencia", $viewModel.report.reference)
                 }
-                campo("Referencia", $reporte.referencia)
-            }
 
-            Section("Estado del paciente") {
-                signo("Estado mental", $reporte.estadoMental, ["Alerta", "Confundido", "Inconsciente"])
-                    .id("signos")
-                signo("Respiración", $reporte.respiracion, ["Normal", "Con dificultad", "No respira"])
-                signo("Color de piel", $reporte.piel, ["Normal", "Pálida", "Azulada"])
+                Section("Estado del paciente") {
+                    vitalSign("Estado mental", $viewModel.report.mentalState, EmergencyReport.mentalStates)
+                        .id("vitals")
+                    vitalSign("Respiración", $viewModel.report.breathing, EmergencyReport.breathingOptions)
+                    vitalSign("Color de piel", $viewModel.report.skin, EmergencyReport.skinColors)
+                }
             }
-        }
-        .onAppear {
-            if demo == "signos" { scroll.scrollTo("signos", anchor: .top) }
-        }
+            .animation(.default, value: viewModel.report)
+            .onAppear {
+                if DemoMode.isActive("vitals") { scroll.scrollTo("vitals", anchor: .top) }
+            }
         }
         .navigationTitle("Reporte")
         .navigationBarTitleDisplayMode(.inline)
         .safeAreaInset(edge: .bottom) {
-            NavigationLink(value: Pantalla.resumen) {
+            NavigationLink(value: EmergencyRoute.summary) {
                 Text("Continuar")
                     .font(.headline)
                     .frame(maxWidth: .infinity)
@@ -88,20 +83,20 @@ struct ReporteView: View {
         }
     }
 
-    func campo(_ titulo: String, _ texto: Binding<String>) -> some View {
-        LabeledContent(titulo) {
-            TextField(titulo, text: texto)
+    private func textField(_ title: String, _ text: Binding<String>) -> some View {
+        LabeledContent(title) {
+            TextField(title, text: text)
                 .multilineTextAlignment(.trailing)
         }
     }
 
-    func signo(_ titulo: String, _ valor: Binding<String>, _ opciones: [String]) -> some View {
+    private func vitalSign(_ title: String, _ value: Binding<String>, _ options: [String]) -> some View {
         VStack(alignment: .leading, spacing: 8) {
-            Text(titulo)
+            Text(title)
                 .font(.subheadline)
                 .foregroundStyle(.secondary)
-            Picker(titulo, selection: valor) {
-                ForEach(opciones, id: \.self) { Text($0) }
+            Picker(title, selection: value) {
+                ForEach(options, id: \.self) { Text($0) }
             }
             .pickerStyle(.segmented)
         }
@@ -110,5 +105,5 @@ struct ReporteView: View {
 }
 
 #Preview {
-    NavigationStack { ReporteView(reporte: Reporte()) }
+    NavigationStack { ReportView(viewModel: AppContainer.preview.makeEmergencyReportViewModel()) }
 }

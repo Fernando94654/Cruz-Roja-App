@@ -1,63 +1,64 @@
 import SwiftUI
 
-/// Pestaña "Perfil": muestra el perfil médico guardado en el API y su código QR.
-struct PerfilView: View {
-    @AppStorage("sesion") private var sesion = false
-    @AppStorage("correo") private var correo = ""
-    /// Por privacidad, los teléfonos de los contactos no van en el QR a menos que el usuario lo active.
-    @AppStorage("qrIncluyeContactos") private var qrIncluyeContactos = false
+struct MedicalProfileView: View {
+    let container: AppContainer
+    @State private var viewModel: MedicalProfileViewModel
+    // Contact phones stay out of the QR unless the user opts in
+    @AppStorage("qrIncludesContacts") private var qrIncludesContacts = false
+    @State private var showsLogin = DemoMode.isActive("login")
+    @State private var isEditing = false
+    @State private var showsQR = false
 
-    @State private var viewModel = PerfilViewModel()
-    @State private var login = demo == "login"
-    @State private var editando = false
-    @State private var mostrarQR = false
+    private var session: SessionStore { container.session }
+
+    init(container: AppContainer) {
+        self.container = container
+        _viewModel = State(initialValue: container.makeMedicalProfileViewModel())
+    }
 
     var body: some View {
         NavigationStack {
             List {
-                Section { cuenta }
-                contenido
+                Section { account }
+                content
             }
             .navigationTitle("Perfil médico")
             .toolbar {
                 ToolbarItem(placement: .topBarLeading) {
-                    if sesion {
+                    if session.isSignedIn {
                         Button("Cerrar sesión") {
-                            withAnimation { sesion = false }
+                            withAnimation { session.signOut() }
                         }
                     }
                 }
                 ToolbarItem(placement: .topBarTrailing) {
-                    if viewModel.perfil != nil {
-                        Button("Editar") { editando = true }
+                    if viewModel.profile != nil {
+                        Button("Editar") { isEditing = true }
                     }
                 }
             }
-            .task { await viewModel.cargar() }
-            .refreshable { await viewModel.cargar() }
-            .sheet(isPresented: $login) {
-                LoginView()
+            .task { await viewModel.load() }
+            .refreshable { await viewModel.load() }
+            .sheet(isPresented: $showsLogin) {
+                LoginView(viewModel: container.makeAuthViewModel())
             }
-            .sheet(isPresented: $editando) {
-                EditarPerfilView(perfil: viewModel.perfil ?? PerfilMedico(), viewModel: viewModel)
+            .sheet(isPresented: $isEditing) {
+                EditMedicalProfileView(profile: viewModel.profile ?? MedicalProfile(), viewModel: viewModel)
             }
-            .fullScreenCover(isPresented: $mostrarQR) {
-                if let perfil = viewModel.perfil {
-                    CodigoQRView(
-                        nombre: perfil.nombre,
-                        texto: perfil.textoQR(incluirContactos: qrIncluyeContactos)
-                    )
+            .fullScreenCover(isPresented: $showsQR) {
+                if let profile = viewModel.profile {
+                    QRCodeView(name: profile.fullName, text: profile.qrText(includeContacts: qrIncludesContacts))
                 }
             }
         }
     }
 
-    // MARK: - Contenido según el estado
+    // MARK: - Content by state
 
     @ViewBuilder
-    private var contenido: some View {
-        switch viewModel.estado {
-        case .cargando:
+    private var content: some View {
+        switch viewModel.state {
+        case .loading:
             Section {
                 HStack {
                     Spacer()
@@ -67,37 +68,37 @@ struct PerfilView: View {
                 .padding(.vertical)
             }
 
-        case .vacio:
+        case .empty:
             Section {
                 VStack(spacing: 12) {
                     Image(systemName: "heart.text.square")
                         .font(.system(size: 40))
-                        .foregroundStyle(Color.rojo)
+                        .foregroundStyle(Color.brandRed)
                     Text("Completa tu perfil médico")
                         .font(.headline)
                     Text("Los paramédicos sabrán tu tipo de sangre, alergias y medicamentos antes de llegar.")
                         .font(.subheadline)
                         .foregroundStyle(.secondary)
                         .multilineTextAlignment(.center)
-                    Button("Completar perfil") { editando = true }
+                    Button("Completar perfil") { isEditing = true }
                         .buttonStyle(.borderedProminent)
-                        .tint(Color.rojo)
+                        .tint(Color.brandRed)
                 }
                 .frame(maxWidth: .infinity)
                 .padding(.vertical)
             }
 
-        case .error(let mensaje):
+        case .failed(let message):
             Section {
                 VStack(spacing: 12) {
                     Image(systemName: "wifi.exclamationmark")
                         .font(.system(size: 36))
                         .foregroundStyle(.secondary)
-                    Text(mensaje)
+                    Text(message)
                         .font(.subheadline)
                         .multilineTextAlignment(.center)
                     Button("Reintentar") {
-                        Task { await viewModel.cargar() }
+                        Task { await viewModel.load() }
                     }
                     .buttonStyle(.bordered)
                 }
@@ -105,16 +106,16 @@ struct PerfilView: View {
                 .padding(.vertical)
             }
 
-        case .listo:
-            if let perfil = viewModel.perfil {
-                secciones(de: perfil)
+        case .ready:
+            if let profile = viewModel.profile {
+                sections(for: profile)
             }
         }
     }
 
     @ViewBuilder
-    private func secciones(de perfil: PerfilMedico) -> some View {
-        if viewModel.usandoCopiaLocal {
+    private func sections(for profile: MedicalProfile) -> some View {
+        if viewModel.isShowingCachedCopy {
             Section {
                 Label("Sin conexión. Se muestra la última copia guardada.", systemImage: "wifi.slash")
                     .font(.footnote)
@@ -123,33 +124,33 @@ struct PerfilView: View {
         }
 
         Section("Datos personales") {
-            LabeledContent("Nombre", value: perfil.nombre)
-            if let edad = perfil.edad() {
-                LabeledContent("Edad", value: "\(edad) años")
+            LabeledContent("Nombre", value: profile.fullName)
+            if let age = profile.age() {
+                LabeledContent("Edad", value: "\(age) años")
             }
         }
 
         Section("Datos médicos") {
-            LabeledContent("Tipo de sangre", value: perfil.tipoSangre.etiqueta)
-            LabeledContent("Alergias", value: PerfilMedico.texto(de: perfil.alergias))
-            LabeledContent("Padecimientos", value: PerfilMedico.texto(de: perfil.padecimientos))
-            LabeledContent("Medicamentos", value: PerfilMedico.texto(de: perfil.medicamentos))
+            LabeledContent("Tipo de sangre", value: profile.bloodType.label)
+            LabeledContent("Alergias", value: MedicalProfile.text(for: profile.allergies))
+            LabeledContent("Padecimientos", value: MedicalProfile.text(for: profile.conditions))
+            LabeledContent("Medicamentos", value: MedicalProfile.text(for: profile.medications))
         }
 
         Section("Contactos de emergencia") {
-            if perfil.contactos.isEmpty {
+            if profile.contacts.isEmpty {
                 Text("Sin contactos registrados")
                     .foregroundStyle(.secondary)
             }
-            ForEach(perfil.contactos) { contacto in
+            ForEach(profile.contacts) { contact in
                 LabeledContent {
-                    if let url = URL(string: "tel:\(PerfilMedico.soloDigitos(contacto.telefono))") {
-                        Link(contacto.telefonoFormateado, destination: url)
+                    if let url = URL(string: "tel:\(MedicalProfile.digitsOnly(contact.phone))") {
+                        Link(contact.formattedPhone, destination: url)
                     }
                 } label: {
                     VStack(alignment: .leading, spacing: 2) {
-                        Text(contacto.nombre)
-                        Text(contacto.parentesco)
+                        Text(contact.name)
+                        Text(contact.relationship)
                             .font(.caption)
                             .foregroundStyle(.secondary)
                     }
@@ -159,11 +160,11 @@ struct PerfilView: View {
 
         Section {
             Button {
-                mostrarQR = true
+                showsQR = true
             } label: {
                 HStack(spacing: 16) {
-                    if let imagen = GeneradorQR.imagen(de: perfil.textoQR(incluirContactos: qrIncluyeContactos)) {
-                        Image(uiImage: imagen)
+                    if let image = QRCodeGenerator.image(for: profile.qrText(includeContacts: qrIncludesContacts)) {
+                        Image(uiImage: image)
                             .interpolation(.none)
                             .resizable()
                             .frame(width: 96, height: 96)
@@ -177,29 +178,29 @@ struct PerfilView: View {
             }
             .buttonStyle(.plain)
 
-            Toggle("Incluir contactos en el código", isOn: $qrIncluyeContactos)
+            Toggle("Incluir contactos en el código", isOn: $qrIncludesContacts)
         } footer: {
             Text("El código funciona sin internet. Cualquier persona que lo escanee puede leerlo.")
         }
     }
 
-    // MARK: - Cuenta (igual que en el mockup)
+    // MARK: - Account
 
     @ViewBuilder
-    private var cuenta: some View {
-        if sesion {
+    private var account: some View {
+        if session.isSignedIn {
             HStack(spacing: 14) {
                 avatar
                 VStack(alignment: .leading, spacing: 2) {
                     Text("Mi cuenta").font(.headline)
-                    Text(correo.isEmpty ? "usuario@correo.com" : correo)
+                    Text(session.email.isEmpty ? "usuario@correo.com" : session.email)
                         .font(.subheadline)
                         .foregroundStyle(.secondary)
                 }
             }
         } else {
             Button {
-                login = true
+                showsLogin = true
             } label: {
                 HStack(spacing: 14) {
                     avatar
@@ -225,10 +226,10 @@ struct PerfilView: View {
             .font(.title2)
             .foregroundStyle(.white)
             .frame(width: 44, height: 44)
-            .background(sesion ? Color.rojo : Color.gray, in: Circle())
+            .background(session.isSignedIn ? Color.brandRed : Color.gray, in: Circle())
     }
 }
 
 #Preview {
-    PerfilView()
+    MedicalProfileView(container: .preview)
 }

@@ -1,9 +1,9 @@
 import SwiftUI
 
-/// Código QR a pantalla completa para que el paramédico lo escanee fácilmente.
-struct CodigoQRView: View {
-    let nombre: String
-    let texto: String
+// Full-screen QR so the paramedic can scan it easily
+struct QRCodeView: View {
+    let name: String
+    let text: String
     @Environment(\.dismiss) private var dismiss
 
     var body: some View {
@@ -11,13 +11,13 @@ struct CodigoQRView: View {
             Spacer()
 
             Text("Perfil médico")
-                .font(.marca(28))
-            Text(nombre)
+                .font(.brand(28))
+            Text(name)
                 .font(.title3)
                 .foregroundStyle(.secondary)
 
-            if let imagen = GeneradorQR.imagen(de: texto) {
-                Image(uiImage: imagen)
+            if let image = QRCodeGenerator.image(for: text) {
+                Image(uiImage: image)
                     .interpolation(.none)
                     .resizable()
                     .scaledToFit()
@@ -54,5 +54,5 @@ struct CodigoQRView: View {
 }
 
 #Preview {
-    CodigoQRView(nombre: "María López", texto: "CRUZ ROJA · PERFIL MÉDICO\nSangre: O+")
+    QRCodeView(name: "María López", text: MedicalProfile.sample.qrText(includeContacts: false))
 }

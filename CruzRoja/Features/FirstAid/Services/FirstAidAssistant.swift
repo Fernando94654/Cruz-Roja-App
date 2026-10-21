@@ -1,50 +1,41 @@
 import Foundation
 
-struct Fuente: Identifiable, Hashable {
-    let id = UUID()
-    let documento: String
-    let pagina: Int
-    let fragmento: String
+protocol FirstAidAssisting: Sendable {
+    func answer(_ question: String) async -> AssistantAnswer
 }
 
-struct Respuesta: Identifiable, Hashable {
-    let id = UUID()
-    let texto: String
-    let emergencia: Emergencia?
-    let fuentes: [Fuente]
-}
-
-// de mentira: busca palabras clave en lugar de un RAG real sobre los manuales de Cruz Roja
-struct Asistente {
+// Keyword search standing in for the RAG over Cruz Roja manuals
+struct KeywordFirstAidAssistant: FirstAidAssisting {
     let manual = "Manual de Primeros Auxilios (demo)"
+    var delay: Duration = .seconds(1.4)
 
-    func responder(_ pregunta: String) async -> Respuesta {
-        try? await Task.sleep(for: .seconds(1.4))
-        return buscar(pregunta)
+    func answer(_ question: String) async -> AssistantAnswer {
+        try? await Task.sleep(for: delay)
+        return search(question)
     }
 
-    func buscar(_ pregunta: String) -> Respuesta {
-        let texto = pregunta.lowercased()
-        let coincidencia = emergencias
-            .map { e in (e, e.palabras.filter { texto.contains($0) }.count) }
+    func search(_ question: String) -> AssistantAnswer {
+        let text = question.lowercased()
+        let match = FirstAidGuide.catalog
+            .map { guide in (guide, guide.keywords.filter { text.contains($0) }.count) }
             .filter { $0.1 > 0 }
             .max { $0.1 < $1.1 }?.0
 
-        guard let e = coincidencia else {
-            return Respuesta(
-                texto: "No encontré una guía específica. Mantén la calma, revisa que el lugar sea seguro y dime si la persona respira, si sangra o si responde.",
-                emergencia: nil,
-                fuentes: [Fuente(documento: manual, pagina: 8, fragmento: "Revisar, llamar y atender.")]
+        guard let guide = match else {
+            return AssistantAnswer(
+                text: "No encontré una guía específica. Mantén la calma, revisa que el lugar sea seguro y dime si la persona respira, si sangra o si responde.",
+                guide: nil,
+                sources: [SourceExcerpt(document: manual, page: 8, excerpt: "Revisar, llamar y atender.")]
             )
         }
 
-        let fuentes = e.pasos.prefix(2).enumerated().map { i, paso in
-            Fuente(documento: manual, pagina: e.pagina + i, fragmento: paso.instruccion)
+        let sources = guide.steps.prefix(2).enumerated().map { i, step in
+            SourceExcerpt(document: manual, page: guide.manualPage + i, excerpt: step.instruction)
         }
-        return Respuesta(
-            texto: "Parece un caso de \(e.titulo.lowercased()). Primero: \(e.pasos[0].instruccion) Te puedo guiar paso a paso por voz mientras llega la ambulancia.",
-            emergencia: e,
-            fuentes: fuentes
+        return AssistantAnswer(
+            text: "Parece un caso de \(guide.title.lowercased()). Primero: \(guide.steps[0].instruction) Te puedo guiar paso a paso por voz mientras llega la ambulancia.",
+            guide: guide,
+            sources: sources
         )
     }
 }

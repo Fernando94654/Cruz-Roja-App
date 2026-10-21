@@ -1,80 +1,84 @@
 import SwiftUI
 
-struct ResumenView: View {
-    var reporte: Reporte
+struct SummaryView: View {
+    let viewModel: EmergencyReportViewModel
+
+    private var report: EmergencyReport { viewModel.report }
 
     var body: some View {
         List {
-            if reporte.enviado {
+            if viewModel.isSent {
                 Section("Seguimiento") {
                     Label("Ubicación compartida por SMS y enlace", systemImage: "checkmark.circle.fill")
                         .foregroundStyle(Color.primary)
-                    paso("Recibido", "17:42", hecho: true)
-                    paso("Unidad asignada", "Ambulancia 214 · 17:43", hecho: true)
-                    paso("En camino", "≈ 8 min", hecho: false)
+                    trackingStep("Recibido", "17:42", done: true)
+                    trackingStep("Unidad asignada", "Ambulancia 214 · 17:43", done: true)
+                    trackingStep("En camino", "≈ 8 min", done: false)
                 }
 
                 Section {
-                    NavigationLink(value: Pantalla.auxilios) {
+                    NavigationLink(value: EmergencyRoute.firstAid) {
                         Label("Ver instrucciones de primeros auxilios", systemImage: "bandage")
                     }
                 }
             }
 
             Section {
-                fila("Para", reporte.nombre.map { "\(reporte.paraQuien) (\($0))" } ?? reporte.paraQuien)
-                fila("Motivo", reporte.motivo)
-                fila("Lesionados", "\(reporte.lesionados)")
-                fila("Lesión principal", reporte.lesion)
-                fila("Lugar", reporte.lugar)
-                fila("Estado mental", reporte.estadoMental)
-                fila("Respiración", reporte.respiracion)
-                fila("Color de piel", reporte.piel)
-                fila("Referencia", reporte.referencia)
-                fila("Ubicación", "±5 m")
+                row("Para", viewModel.patientDescription)
+                row("Motivo", report.reason)
+                row("Lesionados", "\(report.injuredCount)")
+                row("Lesión principal", report.injury)
+                row("Lugar", report.place)
+                row("Estado mental", report.mentalState)
+                row("Respiración", report.breathing)
+                row("Color de piel", report.skin)
+                row("Referencia", report.reference)
+                row("Ubicación", "±\(viewModel.location.accuracyMeters) m")
             } header: {
                 Text("Resumen del reporte")
             } footer: {
                 Text("Generado a partir de lo que dictaste. Revisa que esté correcto.")
             }
 
-            if !reporte.enviado {
+            if !viewModel.isSent {
                 Section {
                     Button {
-                        withAnimation { reporte.enviado = true }
+                        Task { await viewModel.send() }
                     } label: {
                         Text("Enviar a Cruz Roja")
                             .font(.headline)
                             .foregroundStyle(.white)
                             .frame(maxWidth: .infinity)
                     }
-                    .listRowBackground(Color.rojo)
+                    .disabled(viewModel.isSending)
+                    .listRowBackground(Color.brandRed)
                 }
             }
         }
-        .navigationTitle(reporte.enviado ? "Reporte enviado" : "Revisar reporte")
+        .animation(.default, value: viewModel.isSent)
+        .navigationTitle(viewModel.isSent ? "Reporte enviado" : "Revisar reporte")
         .navigationBarTitleDisplayMode(.inline)
     }
 
-    func fila(_ titulo: String, _ valor: String) -> some View {
-        LabeledContent(titulo, value: valor.isEmpty ? "—" : valor)
+    private func row(_ title: String, _ value: String) -> some View {
+        LabeledContent(title, value: value.isEmpty ? "—" : value)
     }
 
-    func paso(_ titulo: String, _ detalle: String, hecho: Bool) -> some View {
+    private func trackingStep(_ title: String, _ detail: String, done: Bool) -> some View {
         HStack(spacing: 12) {
-            Image(systemName: hecho ? "checkmark.circle.fill" : "circle.dotted")
+            Image(systemName: done ? "checkmark.circle.fill" : "circle.dotted")
                 .font(.title3)
-                .foregroundStyle(hecho ? Color.primary : Color.rojo)
+                .foregroundStyle(done ? Color.primary : Color.brandRed)
             VStack(alignment: .leading) {
-                Text(titulo).font(.body.weight(hecho ? .regular : .semibold))
-                Text(detalle).font(.caption).foregroundStyle(.secondary)
+                Text(title).font(.body.weight(done ? .regular : .semibold))
+                Text(detail).font(.caption).foregroundStyle(.secondary)
             }
         }
     }
 }
 
 #Preview {
-    let r = Reporte()
-    r.dictar()
-    return NavigationStack { ResumenView(reporte: r) }
+    var report = EmergencyReport()
+    report.applyDictationSample()
+    return NavigationStack { SummaryView(viewModel: AppContainer.preview.makeEmergencyReportViewModel(report: report)) }
 }

@@ -1,66 +1,34 @@
 import SwiftUI
 
-struct ReporteVecinal: Identifiable {
-    let id = UUID()
-    let titulo: String
-    let distancia: String
-    var confirmaciones: Int
-    let expira: String
-    var confirmado = false
-}
+struct AlertsView: View {
+    @State private var viewModel: AlertsViewModel
+    @State private var showsNewReport = false
 
-struct AlertasView: View {
-    @State private var vecinales = [
-        ReporteVecinal(titulo: "Calle inundada a 400 m", distancia: "400 m", confirmaciones: 6, expira: "3 h"),
-        ReporteVecinal(titulo: "Semáforo apagado en el cruce", distancia: "250 m", confirmaciones: 2, expira: "2 h"),
-    ]
-    @State private var nuevo = false
+    init(viewModel: AlertsViewModel) {
+        _viewModel = State(initialValue: viewModel)
+    }
 
     var body: some View {
         NavigationStack {
             List {
-                Section("Protección Civil") {
-                    HStack(alignment: .top, spacing: 12) {
-                        Image(systemName: "cloud.heavyrain.fill")
-                            .font(.title2)
-                            .foregroundStyle(Color.rojo)
-                        VStack(alignment: .leading, spacing: 4) {
-                            Text("Lluvia intensa en tu zona")
-                                .font(.headline)
-                            Text("Evita cruzar calles inundadas y mantente en un lugar seguro.")
-                                .font(.subheadline)
-                                .foregroundStyle(.secondary)
-                            Text("Alerta oficial · hace 20 min")
-                                .font(.caption)
-                                .foregroundStyle(.secondary)
-                        }
+                Section("Alertas oficiales") {
+                    ForEach(viewModel.officialAlerts) { alert in
+                        officialAlertRow(alert)
                     }
-                    .padding(.vertical, 4)
                 }
 
                 Section("Reportes de vecinos") {
-                    ForEach($vecinales) { $r in
-                        VStack(alignment: .leading, spacing: 6) {
-                            Text(r.titulo).font(.headline)
-                            Text("Confirmado por \(r.confirmaciones) vecinos · expira en \(r.expira)")
-                                .font(.subheadline)
-                                .foregroundStyle(.secondary)
-                            Button(r.confirmado ? "Confirmado" : "Confirmar") {
-                                r.confirmado = true
-                                r.confirmaciones += 1
-                            }
-                            .buttonStyle(.bordered)
-                            .tint(.primary)
-                            .disabled(r.confirmado)
-                        }
-                        .padding(.vertical, 4)
+                    ForEach(viewModel.activeReports) { report in
+                        communityReportRow(report)
                     }
                 }
             }
             .navigationTitle("Alertas")
+            .task { await viewModel.load() }
+            .refreshable { await viewModel.load() }
             .safeAreaInset(edge: .bottom) {
                 Button {
-                    nuevo = true
+                    showsNewReport = true
                 } label: {
                     Label("Reportar algo en mi zona", systemImage: "plus")
                         .font(.headline)
@@ -71,45 +39,50 @@ struct AlertasView: View {
                 .tint(.black)
                 .padding()
             }
-            .sheet(isPresented: $nuevo) {
-                NuevoReporteVecinal()
+            .sheet(isPresented: $showsNewReport) {
+                NewCommunityReportView(viewModel: viewModel)
             }
         }
     }
-}
 
-struct NuevoReporteVecinal: View {
-    @Environment(\.dismiss) private var dismiss
-    @State private var tipo = "Inundación"
-    @State private var detalle = ""
-
-    var body: some View {
-        NavigationStack {
-            Form {
-                Picker("Tipo", selection: $tipo) {
-                    ForEach(["Inundación", "Semáforo", "Accidente", "Árbol caído", "Otro"], id: \.self) {
-                        Text($0)
-                    }
+    private func officialAlertRow(_ alert: OfficialAlert) -> some View {
+        HStack(alignment: .top, spacing: 12) {
+            Image(systemName: alert.icon)
+                .font(.title2)
+                .foregroundStyle(Color.brandRed)
+            VStack(alignment: .leading, spacing: 4) {
+                Text(alert.title)
+                    .font(.headline)
+                if let message = alert.message {
+                    Text(message)
+                        .font(.subheadline)
+                        .foregroundStyle(.secondary)
                 }
-                TextField("Qué está pasando", text: $detalle, axis: .vertical)
-                Label("Se usará tu ubicación actual", systemImage: "location.fill")
+                Text("\(alert.source) · \(alert.areaName) · \(alert.issuedAt, format: .relative(presentation: .named))")
+                    .font(.caption)
                     .foregroundStyle(.secondary)
             }
-            .navigationTitle("Nuevo reporte")
-            .navigationBarTitleDisplayMode(.inline)
-            .toolbar {
-                ToolbarItem(placement: .cancellationAction) {
-                    Button("Cancelar") { dismiss() }
-                }
-                ToolbarItem(placement: .confirmationAction) {
-                    Button("Publicar") { dismiss() }
-                }
-            }
         }
-        .presentationDetents([.medium])
+        .padding(.vertical, 4)
+    }
+
+    private func communityReportRow(_ report: CommunityReport) -> some View {
+        VStack(alignment: .leading, spacing: 6) {
+            Text(report.title).font(.headline)
+            Text("\(report.category.label) · confirmado por \(report.confirmations) vecinos · expira en \(report.expiresAt, style: .relative)")
+                .font(.subheadline)
+                .foregroundStyle(.secondary)
+            Button(report.confirmedByMe ? "Confirmado" : "Confirmar") {
+                Task { await viewModel.confirm(report) }
+            }
+            .buttonStyle(.bordered)
+            .tint(.primary)
+            .disabled(report.confirmedByMe)
+        }
+        .padding(.vertical, 4)
     }
 }
 
 #Preview {
-    AlertasView()
+    AlertsView(viewModel: AppContainer.preview.makeAlertsViewModel())
 }

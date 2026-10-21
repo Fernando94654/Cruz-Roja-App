@@ -1,16 +1,15 @@
 import SwiftUI
 
-/// Formulario para crear o editar el perfil médico.
-/// Trabaja sobre una copia (borrador); solo se guarda al tocar "Guardar".
-struct EditarPerfilView: View {
+// Edits a draft copy; nothing is stored until "Guardar"
+struct EditMedicalProfileView: View {
     @Environment(\.dismiss) private var dismiss
-    @State private var borrador: PerfilMedico
-    @State private var conFecha: Bool
-    let viewModel: PerfilViewModel
+    @State private var draft: MedicalProfile
+    @State private var hasDateOfBirth: Bool
+    let viewModel: MedicalProfileViewModel
 
-    init(perfil: PerfilMedico, viewModel: PerfilViewModel) {
-        _borrador = State(initialValue: perfil)
-        _conFecha = State(initialValue: perfil.fechaNacimiento != nil)
+    init(profile: MedicalProfile, viewModel: MedicalProfileViewModel) {
+        _draft = State(initialValue: profile)
+        _hasDateOfBirth = State(initialValue: profile.dateOfBirth != nil)
         self.viewModel = viewModel
     }
 
@@ -18,70 +17,63 @@ struct EditarPerfilView: View {
         NavigationStack {
             Form {
                 Section("Datos personales") {
-                    TextField("Nombre completo", text: $borrador.nombre)
+                    TextField("Nombre completo", text: $draft.fullName)
                         .textContentType(.name)
-                    Toggle("Fecha de nacimiento", isOn: $conFecha.animation())
-                    if conFecha {
-                        DatePicker(
-                            "Fecha",
-                            selection: fechaNacimiento,
-                            in: ...Date(),
-                            displayedComponents: .date
-                        )
+                    Toggle("Fecha de nacimiento", isOn: $hasDateOfBirth.animation())
+                    if hasDateOfBirth {
+                        DatePicker("Fecha", selection: dateOfBirth, in: ...Date(), displayedComponents: .date)
                     }
                 }
 
                 Section("Tipo de sangre") {
-                    Picker("Tipo de sangre", selection: $borrador.tipoSangre) {
-                        ForEach(TipoSangre.allCases) { tipo in
-                            Text(tipo.etiqueta).tag(tipo)
+                    Picker("Tipo de sangre", selection: $draft.bloodType) {
+                        ForEach(BloodType.allCases) { type in
+                            Text(type.label).tag(type)
                         }
                     }
                 }
 
-                ListaEditable(titulo: "Alergias", ejemplo: "Ej. Penicilina", elementos: $borrador.alergias)
-                ListaEditable(titulo: "Padecimientos", ejemplo: "Ej. Asma", elementos: $borrador.padecimientos)
-                ListaEditable(titulo: "Medicamentos", ejemplo: "Ej. Salbutamol", elementos: $borrador.medicamentos)
+                EditableListSection(title: "Alergias", placeholder: "Ej. Penicilina", items: $draft.allergies)
+                EditableListSection(title: "Padecimientos", placeholder: "Ej. Asma", items: $draft.conditions)
+                EditableListSection(title: "Medicamentos", placeholder: "Ej. Salbutamol", items: $draft.medications)
 
-                contactos
+                contacts
             }
-            .navigationTitle(viewModel.perfil == nil ? "Nuevo perfil" : "Editar perfil")
+            .navigationTitle(viewModel.profile == nil ? "Nuevo perfil" : "Editar perfil")
             .navigationBarTitleDisplayMode(.inline)
             .toolbar {
                 ToolbarItem(placement: .cancellationAction) {
                     Button("Cancelar") { dismiss() }
                 }
                 ToolbarItem(placement: .confirmationAction) {
-                    if viewModel.guardando {
+                    if viewModel.isSaving {
                         ProgressView()
                     } else {
-                        Button("Guardar", action: guardar)
-                            .disabled(borrador.nombre.trimmingCharacters(in: .whitespaces).isEmpty)
+                        Button("Guardar", action: save)
+                            .disabled(draft.fullName.trimmingCharacters(in: .whitespaces).isEmpty)
                     }
                 }
             }
-            .alert("No se pudo guardar", isPresented: hayError) {
+            .alert("No se pudo guardar", isPresented: hasError) {
                 Button("Aceptar", role: .cancel) {}
             } message: {
-                Text(viewModel.mensajeError ?? "")
+                Text(viewModel.errorMessage ?? "")
             }
-            .interactiveDismissDisabled(viewModel.guardando)
+            .interactiveDismissDisabled(viewModel.isSaving)
         }
     }
 
-    // MARK: - Contactos
-
-    private var contactos: some View {
+    private var contacts: some View {
         Section {
-            ForEach($borrador.contactos) { $contacto in
+            ForEach($draft.contacts) { $contact in
                 VStack(alignment: .leading, spacing: 8) {
-                    TextField("Nombre", text: $contacto.nombre)
+                    TextField("Nombre", text: $contact.name)
                         .textContentType(.name)
-                    TextField("Parentesco (ej. Hija)", text: $contacto.parentesco)
-                    TextField("Teléfono a 10 dígitos", text: $contacto.telefono)
+                    TextField("Parentesco (ej. Hija)", text: $contact.relationship)
+                    TextField("Teléfono a 10 dígitos", text: $contact.phone)
                         .keyboardType(.phonePad)
                         .textContentType(.telephoneNumber)
-                    if !contacto.telefono.isEmpty && !PerfilMedico.telefonoValido(contacto.telefono) {
+                    if !contact.phone.isEmpty && !MedicalProfile.isValidPhone(contact.phone) {
                         Text("El teléfono debe tener 10 dígitos.")
                             .font(.caption)
                             .foregroundStyle(.red)
@@ -89,102 +81,97 @@ struct EditarPerfilView: View {
                 }
                 .padding(.vertical, 4)
             }
-            .onDelete { borrador.contactos.remove(atOffsets: $0) }
+            .onDelete { draft.contacts.remove(atOffsets: $0) }
 
-            if borrador.contactos.count < PerfilMedico.maximoContactos {
+            if draft.contacts.count < MedicalProfile.maxContacts {
                 Button("Agregar contacto", systemImage: "plus.circle.fill") {
                     withAnimation {
-                        borrador.contactos.append(ContactoEmergencia(nombre: "", parentesco: "", telefono: ""))
+                        draft.contacts.append(EmergencyContact(name: "", relationship: "", phone: ""))
                     }
                 }
             }
         } header: {
             Text("Contactos de emergencia")
         } footer: {
-            Text("Hasta \(PerfilMedico.maximoContactos) contactos. Desliza a la izquierda para eliminar.")
+            Text("Hasta \(MedicalProfile.maxContacts) contactos. Desliza a la izquierda para eliminar.")
         }
     }
 
-    // MARK: - Auxiliares
-
-    /// Une el toggle con la fecha opcional del perfil.
-    private var fechaNacimiento: Binding<Date> {
+    // Binds the toggle to the optional date of birth
+    private var dateOfBirth: Binding<Date> {
         Binding(
-            get: { borrador.fechaNacimiento ?? Self.fechaSugerida },
-            set: { borrador.fechaNacimiento = $0 }
+            get: { draft.dateOfBirth ?? Self.suggestedDate },
+            set: { draft.dateOfBirth = $0 }
         )
     }
 
-    private static var fechaSugerida: Date {
+    private static var suggestedDate: Date {
         Calendar.current.date(byAdding: .year, value: -30, to: Date()) ?? Date()
     }
 
-    private var hayError: Binding<Bool> {
+    private var hasError: Binding<Bool> {
         Binding(
-            get: { viewModel.mensajeError != nil },
-            set: { if !$0 { viewModel.mensajeError = nil } }
+            get: { viewModel.errorMessage != nil },
+            set: { if !$0 { viewModel.errorMessage = nil } }
         )
     }
 
-    private func guardar() {
-        var perfil = borrador
-        if !conFecha {
-            perfil.fechaNacimiento = nil
-        } else if perfil.fechaNacimiento == nil {
-            perfil.fechaNacimiento = Self.fechaSugerida
+    private func save() {
+        var profile = draft
+        if !hasDateOfBirth {
+            profile.dateOfBirth = nil
+        } else if profile.dateOfBirth == nil {
+            profile.dateOfBirth = Self.suggestedDate
         }
         Task {
-            if await viewModel.guardar(perfil) {
-                dismiss()
-            }
+            if await viewModel.save(profile) { dismiss() }
         }
     }
 }
 
-/// Sección con una lista de textos que se pueden agregar y borrar
-/// (alergias, padecimientos, medicamentos).
-struct ListaEditable: View {
-    let titulo: String
-    let ejemplo: String
-    @Binding var elementos: [String]
-    @State private var nuevo = ""
+// List of texts that can be added and removed (allergies, conditions, medications)
+struct EditableListSection: View {
+    let title: String
+    let placeholder: String
+    @Binding var items: [String]
+    @State private var newItem = ""
 
     var body: some View {
         Section {
-            ForEach(elementos, id: \.self) { elemento in
-                Text(elemento)
+            ForEach(items, id: \.self) { item in
+                Text(item)
             }
-            .onDelete { elementos.remove(atOffsets: $0) }
+            .onDelete { items.remove(atOffsets: $0) }
 
             HStack {
-                TextField(ejemplo, text: $nuevo)
+                TextField(placeholder, text: $newItem)
                     .submitLabel(.done)
-                    .onSubmit(agregar)
-                Button("Agregar", systemImage: "plus.circle.fill", action: agregar)
+                    .onSubmit(add)
+                Button("Agregar", systemImage: "plus.circle.fill", action: add)
                     .labelStyle(.iconOnly)
                     .font(.title3)
                     .buttonStyle(.borderless)
-                    .disabled(nuevo.trimmingCharacters(in: .whitespaces).isEmpty)
+                    .disabled(newItem.trimmingCharacters(in: .whitespaces).isEmpty)
             }
         } header: {
-            Text(titulo)
+            Text(title)
         } footer: {
-            if elementos.isEmpty {
+            if items.isEmpty {
                 Text("Si no tienes, déjalo vacío.")
             }
         }
     }
 
-    private func agregar() {
-        let texto = nuevo.trimmingCharacters(in: .whitespacesAndNewlines)
-        nuevo = ""
-        guard !texto.isEmpty,
-              !elementos.contains(where: { $0.caseInsensitiveCompare(texto) == .orderedSame })
+    private func add() {
+        let text = newItem.trimmingCharacters(in: .whitespacesAndNewlines)
+        newItem = ""
+        guard !text.isEmpty,
+              !items.contains(where: { $0.caseInsensitiveCompare(text) == .orderedSame })
         else { return }
-        withAnimation { elementos.append(texto) }
+        withAnimation { items.append(text) }
     }
 }
 
 #Preview {
-    EditarPerfilView(perfil: PerfilMedico(), viewModel: PerfilViewModel())
+    EditMedicalProfileView(profile: .sample, viewModel: AppContainer.preview.makeMedicalProfileViewModel())
 }

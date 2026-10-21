@@ -1,18 +1,25 @@
 import SwiftUI
 
-struct AprendeView: View {
-    @State private var ruta: [Leccion] = demo == "leccion" ? [lecciones[0]] : []
+struct LearnView: View {
+    let container: AppContainer
+    @State private var viewModel: LearnViewModel
+    @State private var path: [Lesson] = []
+
+    init(container: AppContainer) {
+        self.container = container
+        _viewModel = State(initialValue: container.makeLearnViewModel())
+    }
 
     var body: some View {
-        NavigationStack(path: $ruta) {
-            List(lecciones) { leccion in
-                NavigationLink(value: leccion) {
+        NavigationStack(path: $path) {
+            List(viewModel.lessons) { lesson in
+                NavigationLink(value: lesson) {
                     HStack(spacing: 14) {
-                        Miniatura()
+                        LessonThumbnail()
                             .frame(width: 110, height: 66)
                         VStack(alignment: .leading, spacing: 4) {
-                            Text(leccion.titulo).font(.headline)
-                            Text("Video · \(leccion.duracion)")
+                            Text(lesson.title).font(.headline)
+                            Text("Video · \(lesson.duration)")
                                 .font(.subheadline)
                                 .foregroundStyle(.secondary)
                         }
@@ -21,12 +28,18 @@ struct AprendeView: View {
                 }
             }
             .navigationTitle("Aprende")
-            .navigationDestination(for: Leccion.self) { LeccionView(leccion: $0) }
+            .navigationDestination(for: Lesson.self) { lesson in
+                LessonView(viewModel: container.makeLessonViewModel(lesson: lesson))
+            }
+            .task {
+                await viewModel.load()
+                if DemoMode.isActive("lesson"), path.isEmpty, let first = viewModel.lessons.first { path = [first] }
+            }
         }
     }
 }
 
-struct Miniatura: View {
+struct LessonThumbnail: View {
     var body: some View {
         RoundedRectangle(cornerRadius: 10)
             .fill(.gray.opacity(0.25))
@@ -39,71 +52,6 @@ struct Miniatura: View {
     }
 }
 
-struct LeccionView: View {
-    let leccion: Leccion
-    @State private var avance = 0.0
-    private let voz = Voz.compartida
-
-    var body: some View {
-        ScrollView {
-            VStack(alignment: .leading, spacing: 16) {
-                // reproductor de mentira
-                Miniatura()
-                    .aspectRatio(16/9, contentMode: .fit)
-
-                VStack(spacing: 4) {
-                    Slider(value: $avance)
-                        .tint(Color.rojo)
-                    HStack {
-                        Text("0:00")
-                        Spacer()
-                        Text(leccion.duracion)
-                    }
-                    .font(.caption.monospacedDigit())
-                    .foregroundStyle(.secondary)
-                }
-
-                Text(leccion.titulo).font(.marca(28))
-                Text(leccion.descripcion)
-                    .foregroundStyle(.secondary)
-
-                ForEach(Array(leccion.pasos.enumerated()), id: \.offset) { i, paso in
-                    HStack(alignment: .top, spacing: 12) {
-                        Text("\(i + 1)")
-                            .font(.headline)
-                            .foregroundStyle(.white)
-                            .frame(width: 28, height: 28)
-                            .background(Color.rojo, in: Circle())
-                        Text(paso)
-                            .frame(maxWidth: .infinity, alignment: .leading)
-                    }
-                }
-
-                Button {
-                    if voz.hablando {
-                        voz.callar()
-                    } else {
-                        voz.decir(([leccion.titulo] + leccion.pasos).joined(separator: ". "))
-                    }
-                } label: {
-                    Label(voz.hablando ? "Detener" : "Escuchar lección",
-                          systemImage: voz.hablando ? "stop.fill" : "speaker.wave.2.fill")
-                }
-                .buttonStyle(.bordered)
-                .tint(.primary)
-
-                Divider()
-
-                Label("Lección certificada por instructores de Cruz Roja", systemImage: "checkmark.seal")
-                    .font(.subheadline)
-            }
-            .padding()
-        }
-        .navigationBarTitleDisplayMode(.inline)
-        .onDisappear { voz.callar() }
-    }
-}
-
 #Preview {
-    AprendeView()
+    LearnView(container: .preview)
 }
