@@ -23,13 +23,24 @@ uvicorn app.main:app --reload
 
 **Physical iPhone:** the simulator reaches `127.0.0.1`, a device doesn't. Run `uvicorn app.main:app --host 0.0.0.0` and set `APIConfig.baseURL` in the app to your Mac's LAN IP.
 
+## Supabase
+
+The backend uses Supabase only as its Postgres database; the schema still comes from Alembic.
+
+1. In Supabase: **Project → Connect → Session pooler**, copy the connection string.
+2. In `.env`, set `DATABASE_URL` to it, changing `postgresql://` to `postgresql+psycopg://` and adding `?sslmode=require`. URL-encode special characters in the password (`@` → `%40`).
+3. `alembic upgrade head` creates the extensions, tables and Row Level Security.
+4. Optional: `python scripts/seed.py` for demo data (wipes existing data).
+
+Every table has Row Level Security enabled with no policies, so the Data API (publishable key) can't read or write them; the backend connects as the table owner and isn't affected. New tables need `ALTER TABLE ... ENABLE ROW LEVEL SECURITY` in their migration (`tests/test_security.py` fails otherwise).
+
 ## Tests
 
 ```bash
 pytest
 ```
 
-Tests create a separate `enlace_vital_test` database in the same container, run the migrations and roll back every test.
+Tests never touch Supabase: they create a throwaway database next to `TEST_DATABASE_URL` (the local docker Postgres), run the migrations and roll back every test.
 
 ## Structure
 
