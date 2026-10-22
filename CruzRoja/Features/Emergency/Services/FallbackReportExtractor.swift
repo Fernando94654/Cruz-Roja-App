@@ -11,21 +11,56 @@ final class FallbackReportExtractor: ReportExtracting {
     private var model: ReportExtracting?
 
     func prewarm() {
+        Log.ai.info("Availability on prewarm: \(self.availabilityDescription(), privacy: .public)")
         if availableModel() != nil { model?.prewarm() }
     }
 
     func extract(_ text: String) async throws -> ExtractedFields {
         var reason = unavailableReason()
+        Log.ai.info("Availability: \(self.availabilityDescription(), privacy: .public)")
         if reason == nil, let model = availableModel() {
             do {
                 return try await model.extract(text)
             } catch {
-                reason = "la IA no pudo procesar el texto"
+                Log.ai.error("Model failed: \(String(reflecting: error), privacy: .public)")
+                reason = Self.reason(for: error)
             }
+        } else {
+            Log.ai.notice("Using rules: \(reason ?? "unknown", privacy: .public)")
         }
         var fields = rules.fields(from: text)
         fields.source = .rules(reason: reason)
         return fields
+    }
+
+    // User-facing reason for a generation error, naming the error kind to ease debugging
+    private static func reason(for error: Error) -> String {
+        #if canImport(FoundationModels)
+        if #available(iOS 26.0, *), let error = error as? LanguageModelSession.GenerationError {
+            switch error {
+            case .guardrailViolation: return "el filtro de seguridad de Apple rechazó el texto"
+            case .unsupportedLanguageOrLocale: return "el idioma del dispositivo no está soportado por la IA"
+            case .assetsUnavailable: return "el modelo no está listo en este dispositivo"
+            case .exceededContextWindowSize: return "el texto es demasiado largo"
+            case .unsupportedGuide: return "el formato pedido al modelo no es compatible"
+            case .decodingFailure: return "la IA respondió en un formato inválido"
+            default: return "la IA no pudo procesar el texto (\(String(describing: error)))"
+            }
+        }
+        #endif
+        return "la IA no pudo procesar el texto (\(error.localizedDescription))"
+    }
+
+    // Raw availability value for the logs
+    private func availabilityDescription() -> String {
+        #if canImport(FoundationModels)
+        if #available(iOS 26.0, *) {
+            return String(describing: SystemLanguageModel.default.availability)
+        }
+        return "iOS < 26"
+        #else
+        return "FoundationModels not in SDK"
+        #endif
     }
 
     private func availableModel() -> ReportExtracting? {

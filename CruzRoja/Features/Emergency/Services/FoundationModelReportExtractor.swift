@@ -1,4 +1,5 @@
 #if canImport(FoundationModels)
+import Foundation
 import FoundationModels
 
 // Structured answer the on-device model must produce; empty strings mean "not mentioned"
@@ -60,7 +61,10 @@ final class FoundationModelReportExtractor: ReportExtracting {
     func extract(_ text: String) async throws -> ExtractedFields {
         let current = session()
         nextSession = nil
+        Log.ai.info("Prompt (\(text.count) chars): \(text, privacy: .private)")
+        let start = Date()
         let draft = try await current.respond(to: "Descripción de la emergencia: \(text)", generating: ReportDraft.self).content
+        Log.ai.info("Model answered in \(Date().timeIntervalSince(start), format: .fixed(precision: 2))s: \(String(describing: draft), privacy: .private)")
         return ExtractedFields(
             reportingFor: Self.reportingFor(draft.forWhom),
             patientName: Self.nonEmpty(draft.patientName),
