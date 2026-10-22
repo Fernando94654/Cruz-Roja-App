@@ -13,7 +13,7 @@ final class AppContainer {
     private let medicalProfileService: MedicalProfileServicing
     private let medicalProfileCache: MedicalProfileCache
     private let emergencyReportService: EmergencyReportServicing
-    private let reportExtractor: ReportExtracting = RuleBasedReportExtractor()
+    private let reportExtractor: ReportExtracting
     private let firstAidAssistant: FirstAidAssisting
     private let alertsService: AlertsServicing
     private let familyService: FamilyServicing
@@ -29,6 +29,7 @@ final class AppContainer {
         medicalProfileService: MedicalProfileServicing,
         medicalProfileCache: MedicalProfileCache = MedicalProfileCache(),
         emergencyReportService: EmergencyReportServicing = MockEmergencyReportService(),
+        reportExtractor: ReportExtracting? = nil,
         firstAidAssistant: FirstAidAssisting = KeywordFirstAidAssistant(),
         alertsService: AlertsServicing = MockAlertsService(),
         familyService: FamilyServicing = MockFamilyService(),
@@ -43,6 +44,7 @@ final class AppContainer {
         self.medicalProfileService = medicalProfileService
         self.medicalProfileCache = medicalProfileCache
         self.emergencyReportService = emergencyReportService
+        self.reportExtractor = reportExtractor ?? RuleBasedReportExtractor()
         self.firstAidAssistant = firstAidAssistant
         self.alertsService = alertsService
         self.familyService = familyService
@@ -56,7 +58,8 @@ final class AppContainer {
         locationProvider: CoreLocationService(),
         dictation: SpeechDictation(),
         medicalProfileService: MedicalProfileAPIService(),
-        emergencyReportService: EmergencyReportAPIService()
+        emergencyReportService: EmergencyReportAPIService(),
+        reportExtractor: FallbackReportExtractor()
     )
 
     static let preview = AppContainer(
@@ -96,7 +99,7 @@ final class AppContainer {
     func demoReport() -> EmergencyReport {
         var report = EmergencyReport()
         report.description = EmergencyReport.demoDescription
-        return report.merging(reportExtractor.extract(EmergencyReport.demoDescription))
+        return report.merging(RuleBasedReportExtractor().fields(from: EmergencyReport.demoDescription))
     }
 
     func makeFirstAidViewModel() -> FirstAidViewModel {

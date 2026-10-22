@@ -25,25 +25,40 @@ struct ReportView: View {
                 Section {
                     TextField("Ej. Mi abuela se cayó en la casa y está confundida", text: $viewModel.report.description, axis: .vertical)
                         .lineLimit(3...6)
-                    HStack {
-                        Button {
-                            Task { await viewModel.toggleDictation() }
-                        } label: {
-                            Label(isListening ? "Detener" : "Dictar", systemImage: isListening ? "stop.fill" : "mic.fill")
-                                .frame(maxWidth: .infinity)
-                        }
-                        .buttonStyle(.bordered)
-                        .tint(isListening ? Color.brandRed : .primary)
 
-                        Button {
-                            viewModel.fillFromDescription()
-                        } label: {
-                            Label("Llenar con IA", systemImage: "sparkles")
-                                .frame(maxWidth: .infinity)
+                    Button {
+                        Task { await viewModel.toggleDictation() }
+                    } label: {
+                        Label(isListening ? "Detener dictado" : "Dictar", systemImage: isListening ? "stop.fill" : "mic.fill")
+                            .foregroundStyle(isListening ? Color.brandRed : Color.primary)
+                    }
+                    .disabled(viewModel.isFilling)
+
+                    Button {
+                        Task { await viewModel.fillFromDescription() }
+                    } label: {
+                        HStack {
+                            if viewModel.isFilling {
+                                ProgressView()
+                                Text("Pensando…")
+                            } else {
+                                Label("Llenar con IA", systemImage: "sparkles")
+                            }
                         }
-                        .buttonStyle(.borderedProminent)
-                        .tint(Color.brandRed)
-                        .disabled(viewModel.report.description.trimmingCharacters(in: .whitespaces).isEmpty)
+                        .foregroundStyle(Color.brandRed)
+                    }
+                    .disabled(viewModel.isFilling || isListening || viewModel.report.description.trimmingCharacters(in: .whitespaces).isEmpty)
+
+                    if let message = viewModel.fillMessage {
+                        VStack(alignment: .leading, spacing: 6) {
+                            Text(message)
+                                .font(.footnote)
+                                .foregroundStyle(.secondary)
+                            if viewModel.aiSummary != nil {
+                                Text(viewModel.summary)
+                                    .font(.subheadline.weight(.medium))
+                            }
+                        }
                     }
                 } header: {
                     Text("¿Qué está pasando?")
@@ -84,6 +99,7 @@ struct ReportView: View {
                 if DemoMode.isActive("vitals") { scroll.scrollTo("vitals", anchor: .top) }
             }
             .task { await viewModel.locate() }
+            .task { viewModel.prewarmAI() }
             .onDisappear { if isListening { viewModel.dictation.stop() } }
             .alert("Aviso", isPresented: hasError) {
                 Button("Aceptar", role: .cancel) {}

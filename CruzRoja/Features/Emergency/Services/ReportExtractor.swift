@@ -1,5 +1,11 @@
 import Foundation
 
+// Who filled the fields; rules carry the reason the AI wasn't used, if any
+enum ExtractionSource: Equatable, Sendable {
+    case ai
+    case rules(reason: String?)
+}
+
 // Fields detected in the free text; nil means "not mentioned"
 struct ExtractedFields: Equatable, Sendable {
     var reportingFor: ReportingFor?
@@ -8,9 +14,19 @@ struct ExtractedFields: Equatable, Sendable {
     var injuredCount: Int?
     var injury: String?
     var place: String?
+    var reference: String?
     var mentalState: String?
     var breathing: String?
     var skin: String?
+    // Summary written by the AI for the operator
+    var summary: String?
+    var source: ExtractionSource = .rules(reason: nil)
+
+    // True when nothing in the text was recognized
+    var isEmpty: Bool {
+        reportingFor == nil && patientName == nil && reason == nil && injuredCount == nil && injury == nil
+            && place == nil && reference == nil && mentalState == nil && breathing == nil && skin == nil
+    }
 }
 
 extension EmergencyReport {
@@ -23,6 +39,7 @@ extension EmergencyReport {
         copy.injuredCount = fields.injuredCount ?? injuredCount
         copy.injury = fields.injury ?? injury
         copy.place = fields.place ?? place
+        copy.reference = fields.reference ?? reference
         copy.mentalState = fields.mentalState ?? mentalState
         copy.breathing = fields.breathing ?? breathing
         copy.skin = fields.skin ?? skin
@@ -30,14 +47,28 @@ extension EmergencyReport {
     }
 }
 
-// Turns the user's description into report fields; an on-device LLM can replace it later
-protocol ReportExtracting: Sendable {
-    func extract(_ text: String) -> ExtractedFields
+// Turns the user's description into report fields
+@MainActor
+protocol ReportExtracting {
+    func extract(_ text: String) async throws -> ExtractedFields
+    // Loads the model ahead of time so the first answer is faster
+    func prewarm()
 }
 
-// Keyword rules in Spanish, matched without accents; same rules as the Android app
-struct RuleBasedReportExtractor: ReportExtracting {
-    func extract(_ text: String) -> ExtractedFields {
+extension ReportExtracting {
+    func prewarm() {}
+}
+
+// Conformance in an extension keeps the struct itself free of main-actor isolation
+extension RuleBasedReportExtractor: ReportExtracting {
+    func extract(_ text: String) async throws -> ExtractedFields {
+        fields(from: text)
+    }
+}
+
+// Keyword rules in Spanish, matched without accents; offline fallback when the AI isn't available
+struct RuleBasedReportExtractor: Sendable {
+    func fields(from text: String) -> ExtractedFields {
         let t = Self.normalize(text)
         let relative = Self.relatives.first { t.contains("mi \($0)") }
         return ExtractedFields(
