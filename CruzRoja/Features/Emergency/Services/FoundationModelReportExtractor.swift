@@ -63,20 +63,92 @@ final class FoundationModelReportExtractor: ReportExtracting {
         nextSession = nil
         Log.ai.info("Prompt (\(text.count) chars): \(text, privacy: .private)")
         let start = Date()
-        let draft = try await current.respond(to: "Descripción de la emergencia: \(text)", generating: ReportDraft.self).content
-        Log.ai.info("Model answered in \(Date().timeIntervalSince(start), format: .fixed(precision: 2))s: \(String(describing: draft), privacy: .private)")
-        return ExtractedFields(
-            reportingFor: Self.reportingFor(draft.forWhom),
-            patientName: Self.nonEmpty(draft.patientName),
-            reason: Self.nonEmpty(draft.reason),
-            injuredCount: draft.injuredCount,
-            injury: Self.nonEmpty(draft.injury),
-            place: Self.nonEmpty(draft.place),
-            reference: Self.nonEmpty(draft.reference),
-            mentalState: Self.nonEmpty(draft.mentalState),
-            breathing: Self.nonEmpty(draft.breathing),
-            skin: Self.nonEmpty(draft.skin),
-            summary: Self.nonEmpty(draft.summary),
+        do {
+            let draft = try await current.respond(to: "Descripción de la emergencia: \(text)", generating: ReportDraft.self).content
+            Log.ai.info("Model answered in \(Date().timeIntervalSince(start), format: .fixed(precision: 2))s: \(String(describing: draft), privacy: .private)")
+            return Self.fields(
+                forWhom: draft.forWhom, patientName: draft.patientName, reason: draft.reason, injuredCount: draft.injuredCount,
+                injury: draft.injury, place: draft.place, reference: draft.reference, mentalState: draft.mentalState,
+                breathing: draft.breathing, skin: draft.skin, summary: draft.summary
+            )
+        } catch LanguageModelSession.GenerationError.guardrailViolation {
+            // Emergency descriptions (injuries, blood) often trip the default guardrails
+            Log.ai.notice("Guardrails blocked guided generation; retrying with permissive text mode")
+            return try await permissiveExtract(text)
+        }
+    }
+
+    // Permissive guardrails only apply to plain-text answers, so the model returns JSON as text
+    private func permissiveExtract(_ text: String) async throws -> ExtractedFields {
+        let model = SystemLanguageModel(guardrails: .permissiveContentTransformations)
+        let session = LanguageModelSession(model: model, instructions: Self.instructions + " " + Self.jsonFormat)
+        let start = Date()
+        let answer = try await session.respond(to: "Descripción de la emergencia: \(text)").content
+        Log.ai.info("Permissive answer in \(Date().timeIntervalSince(start), format: .fixed(precision: 2))s: \(answer, privacy: .private)")
+
+        guard let open = answer.firstIndex(of: "{"), let close = answer.lastIndex(of: "}"),
+              let json = try? JSONDecoder().decode(ReportJSON.self, from: Data(answer[open...close].utf8))
+        else {
+            Log.ai.error("Permissive answer is not valid JSON")
+            throw InvalidModelAnswer()
+        }
+        return Self.fields(
+            forWhom: json.forWhom ?? "", patientName: json.patientName ?? "", reason: json.reason ?? "",
+            injuredCount: min(max(json.injuredCount ?? 1, 1), 20), injury: json.injury ?? "", place: json.place ?? "",
+            reference: json.reference ?? "", mentalState: Self.allowed(json.mentalState, EmergencyReport.mentalStates),
+            breathing: Self.allowed(json.breathing, EmergencyReport.breathingOptions),
+            skin: Self.allowed(json.skin, EmergencyReport.skinColors), summary: json.summary ?? ""
+        )
+    }
+
+    private static let jsonFormat = """
+        Responde únicamente con un objeto JSON con estas claves: \
+        "forWhom" ("yo", "familiar" u "otra persona"), "patientName", "reason", "injuredCount" (número), \
+        "injury", "place", "reference", "mentalState" ("Alerta", "Confundido", "Inconsciente" o ""), \
+        "breathing" ("Normal", "Con dificultad", "No respira" o ""), "skin" ("Normal", "Pálida", "Azulada" o ""), \
+        "summary" (una o dos oraciones). Usa "" para lo que no se mencione.
+        """
+
+    private struct InvalidModelAnswer: LocalizedError {
+        var errorDescription: String? { "respuesta en formato inválido" }
+    }
+
+    private struct ReportJSON: Decodable {
+        let forWhom: String?
+        let patientName: String?
+        let reason: String?
+        let injuredCount: Int?
+        let injury: String?
+        let place: String?
+        let reference: String?
+        let mentalState: String?
+        let breathing: String?
+        let skin: String?
+        let summary: String?
+    }
+
+    // Keeps only values the form offers, since plain-text answers aren't constrained
+    private static func allowed(_ value: String?, _ options: [String]) -> String {
+        guard let value else { return "" }
+        return options.first { $0.caseInsensitiveCompare(value) == .orderedSame } ?? ""
+    }
+
+    private static func fields(
+        forWhom: String, patientName: String, reason: String, injuredCount: Int, injury: String, place: String,
+        reference: String, mentalState: String, breathing: String, skin: String, summary: String
+    ) -> ExtractedFields {
+        ExtractedFields(
+            reportingFor: reportingFor(forWhom),
+            patientName: nonEmpty(patientName),
+            reason: nonEmpty(reason),
+            injuredCount: injuredCount,
+            injury: nonEmpty(injury),
+            place: nonEmpty(place),
+            reference: nonEmpty(reference),
+            mentalState: nonEmpty(mentalState),
+            breathing: nonEmpty(breathing),
+            skin: nonEmpty(skin),
+            summary: nonEmpty(summary),
             source: .ai
         )
     }
