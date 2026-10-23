@@ -25,6 +25,31 @@ private struct EmptyService: LessonsServicing {
     func fetchLessons() async throws -> [Lesson] { [] }
 }
 
+@MainActor
+private final class FakeVideoPlayer: LessonVideoPlayback {
+    var pauses = 0
+    var stops = 0
+    var onPlayback: (@MainActor () -> Void)?
+
+    func pause() { pauses += 1 }
+    func stop() { stops += 1 }
+    func monitorPlayback(onPlayback: @escaping @MainActor () -> Void) async {
+        self.onPlayback = onPlayback
+        while !Task.isCancelled {
+            try? await Task.sleep(for: .milliseconds(5))
+        }
+    }
+}
+
+@MainActor
+private final class TrackingSpeech: SpeechSynthesizing {
+    var isSpeaking = false
+    var isMuted = false
+    var stops = 0
+    func speak(_ text: String) { isSpeaking = true }
+    func stop() { isSpeaking = false; stops += 1 }
+}
+
 private final class LessonsProtocol: URLProtocol, @unchecked Sendable {
     override class func canInit(with request: URLRequest) -> Bool { true }
     override class func canonicalRequest(for request: URLRequest) -> URLRequest { request }
@@ -87,6 +112,54 @@ struct LessonsChecks {
         }
         assert(YouTubeVideo("https://youtu.be/7SBBka5fwW8")?.id == "7SBBka5fwW8")
 
+        let playerSpeech = TrackingSpeech()
+        let playerLesson = LessonViewModel(lesson: fixtures[0], speech: playerSpeech)
+        var players: [FakeVideoPlayer] = []
+        let playerModel = LessonPlayerViewModel(lesson: playerLesson, loadingTimeout: .milliseconds(30)) {
+            let player = FakeVideoPlayer()
+            players.append(player)
+            return player
+        }
+        playerModel.appear()
+        assert(playerModel.isVisible && playerModel.isLoading && !playerModel.isUnavailable)
+        let firstRevision = playerModel.revision
+        playerModel.didLoad(revision: firstRevision)
+        assert(!playerModel.isLoading && !playerModel.isUnavailable)
+        playerModel.toggleSpeech()
+        assert(playerSpeech.isSpeaking && players.last!.pauses == 1)
+        for _ in 0..<100 where players.last!.onPlayback == nil { await Task.yield() }
+        assert(players.last!.onPlayback != nil)
+        players.last!.onPlayback?()
+        assert(!playerSpeech.isSpeaking) // native playback interrupts speech
+        try await Task.sleep(for: .milliseconds(45))
+        assert(!playerModel.isUnavailable) // successful load cancels the timeout
+        playerModel.toggleSpeech()
+        playerModel.scenePhaseChanged(isActive: false)
+        assert(!playerSpeech.isSpeaking && players.last!.pauses == 3)
+        playerModel.toggleSpeech()
+        playerModel.openInYouTube()
+        assert(!playerSpeech.isSpeaking && players.last!.pauses == 5)
+
+        let oldPlayer = players.last!
+        playerModel.didFail(revision: firstRevision)
+        assert(playerModel.isUnavailable && !playerModel.isLoading)
+        playerModel.retry()
+        assert(oldPlayer.stops == 1 && players.count == 3) // initial, appear, retry
+        assert(playerModel.isLoading && !playerModel.isUnavailable)
+        playerModel.didLoad(revision: firstRevision)
+        playerModel.toggleSpeech()
+        oldPlayer.onPlayback?()
+        assert(playerModel.isLoading && playerSpeech.isSpeaking) // late callbacks cannot change the new session
+        playerModel.toggleSpeech()
+        try await Task.sleep(for: .milliseconds(60))
+        assert(playerModel.isUnavailable && !playerModel.isLoading) // unavailable fallback
+        let activePlayer = players.last!
+        playerModel.toggleSpeech()
+        playerModel.disappear()
+        assert(!playerModel.isVisible && activePlayer.stops == 1 && !playerSpeech.isSpeaking)
+        playerModel.didLoad(revision: playerModel.revision)
+        assert(playerModel.isUnavailable) // hidden player cannot update presentation
+
         let retry = LearnViewModel(service: RetryService())
         await retry.load()
         assert(retry.errorMessage != nil && retry.lessons.isEmpty && !retry.isLoading)
@@ -121,6 +194,6 @@ struct LessonsChecks {
         guide.stop()
         await guide.runStep()
         assert(speech.spoken.count == count)
-        print("Swift lesson checks passed: API decoding, stable UUIDs, database steps/publishers, URLs, retry/empty states, four mappings, independent guidance and speech cleanup.")
+        print("Swift lesson checks passed: API decoding, stable UUIDs, database steps/publishers, URLs, player lifecycle/retry/timeout/speech, lesson retry/empty states, four mappings, independent guidance and speech cleanup.")
     }
 }

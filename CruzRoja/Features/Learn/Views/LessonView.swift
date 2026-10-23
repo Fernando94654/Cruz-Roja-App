@@ -2,49 +2,39 @@ import SwiftUI
 
 struct LessonView: View {
     @State private var viewModel: LessonViewModel
-    @State private var player = YouTubePlayerController()
-    @State private var isVisible = false
-    @State private var playerRevision = 0
+    @State private var playerViewModel: LessonPlayerViewModel<YouTubePlayerController>
     @Environment(\.scenePhase) private var scenePhase
 
     init(viewModel: LessonViewModel) {
         _viewModel = State(initialValue: viewModel)
+        _playerViewModel = State(initialValue: LessonPlayerViewModel(lesson: viewModel, makePlayer: YouTubePlayerController.init))
     }
 
     private var lesson: Lesson { viewModel.lesson }
 
     var body: some View {
-        ScrollView {
+        let revision = playerViewModel.revision
+        return ScrollView {
             VStack(alignment: .leading, spacing: 16) {
                 if let video = lesson.video {
-                    if isVisible {
-                        YouTubePlayer(video: video, controller: player)
-                            .id(playerRevision)
+                    if playerViewModel.isVisible {
+                        YouTubePlayer(video: video, controller: playerViewModel.player,
+                                      onLoad: { playerViewModel.didLoad(revision: revision) },
+                                      onFailure: { playerViewModel.didFail(revision: revision) })
+                            .id(revision)
                             .frame(height: 240)
-                            .task(id: playerRevision) {
-                                await player.monitorPlayback(onPlayback: viewModel.stop)
-                            }
-                            .task(id: playerRevision) {
-                                try? await Task.sleep(for: .seconds(20))
-                                guard !Task.isCancelled, player.isLoading else { return }
-                                player.isLoading = false
-                                player.isUnavailable = true
-                            }
                     }
-                    if player.isLoading { ProgressView("Cargando video…") }
-                    if player.isUnavailable {
+                    if playerViewModel.isLoading { ProgressView("Cargando video…") }
+                    if playerViewModel.isUnavailable {
                         Text("No se pudo cargar el reproductor. Puedes reintentar o abrir el video en YouTube.")
                             .font(.subheadline).foregroundStyle(.secondary)
                         Button("Reintentar video") {
-                            player.stop()
-                            player = YouTubePlayerController()
-                            playerRevision += 1
+                            playerViewModel.retry()
                         }
                     }
                     Link("Abrir en YouTube", destination: video.url)
                         .simultaneousGesture(TapGesture().onEnded {
-                            viewModel.stop()
-                            player.pause()
+                            playerViewModel.openInYouTube()
                         })
                 } else {
                     Label("Video no disponible", systemImage: "video.slash")
@@ -69,8 +59,7 @@ struct LessonView: View {
                 }
 
                 Button {
-                    player.pause()
-                    viewModel.toggleSpeech()
+                    playerViewModel.toggleSpeech()
                 } label: {
                     Label(viewModel.isSpeaking ? "Detener" : "Escuchar lección",
                           systemImage: viewModel.isSpeaking ? "stop.fill" : "speaker.wave.2.fill")
@@ -89,20 +78,13 @@ struct LessonView: View {
         }
         .navigationBarTitleDisplayMode(.inline)
         .onAppear {
-            viewModel.stop()
-            player = YouTubePlayerController()
-            isVisible = true
+            playerViewModel.appear()
         }
         .onDisappear {
-            viewModel.stop()
-            player.stop()
-            isVisible = false
+            playerViewModel.disappear()
         }
         .onChange(of: scenePhase) {
-            if scenePhase != .active {
-                player.pause()
-                viewModel.stop()
-            }
+            playerViewModel.scenePhaseChanged(isActive: scenePhase == .active)
         }
     }
 }

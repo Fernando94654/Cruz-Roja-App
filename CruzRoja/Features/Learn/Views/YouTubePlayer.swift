@@ -2,11 +2,8 @@ import SwiftUI
 import WebKit
 
 @MainActor
-@Observable
-final class YouTubePlayerController {
-    var isLoading = true
-    var isUnavailable = false
-    @ObservationIgnored weak var webView: WKWebView?
+final class YouTubePlayerController: LessonVideoPlayback {
+    weak var webView: WKWebView?
 
     func pause() {
         webView?.pauseAllMediaPlayback(completionHandler: nil)
@@ -41,9 +38,11 @@ final class YouTubePlayerController {
 struct YouTubePlayer: UIViewRepresentable {
     let video: YouTubeVideo
     let controller: YouTubePlayerController
+    let onLoad: @MainActor () -> Void
+    let onFailure: @MainActor () -> Void
 
     func makeCoordinator() -> Coordinator {
-        Coordinator(controller: controller)
+        Coordinator(onLoad: onLoad, onFailure: onFailure)
     }
 
     func makeUIView(context: Context) -> WKWebView {
@@ -58,8 +57,7 @@ struct YouTubePlayer: UIViewRepresentable {
         // YouTube requires the installed app's bundle ID as the HTTPS referrer.
         guard let bundleID = Bundle.main.bundleIdentifier,
               let origin = URL(string: "https://\(bundleID.lowercased())") else {
-            controller.isUnavailable = true
-            controller.isLoading = false
+            onFailure()
             return webView
         }
         var embed = URLComponents(string: "https://www.youtube.com/embed/\(video.id)")!
@@ -88,17 +86,18 @@ struct YouTubePlayer: UIViewRepresentable {
     }
 
     final class Coordinator: NSObject, WKNavigationDelegate {
-        let controller: YouTubePlayerController
+        let onLoad: @MainActor () -> Void
+        let onFailure: @MainActor () -> Void
         var isActive = true
 
-        init(controller: YouTubePlayerController) {
-            self.controller = controller
+        init(onLoad: @escaping @MainActor () -> Void, onFailure: @escaping @MainActor () -> Void) {
+            self.onLoad = onLoad
+            self.onFailure = onFailure
         }
 
         func webView(_ webView: WKWebView, didFinish navigation: WKNavigation!) {
             guard isActive else { return }
-            controller.isLoading = false
-            controller.isUnavailable = false
+            onLoad()
         }
 
         func webView(_ webView: WKWebView, decidePolicyFor navigationResponse: WKNavigationResponse,
@@ -119,8 +118,7 @@ struct YouTubePlayer: UIViewRepresentable {
 
         private func fail() {
             guard isActive else { return }
-            controller.isLoading = false
-            controller.isUnavailable = true
+            onFailure()
         }
     }
 }
