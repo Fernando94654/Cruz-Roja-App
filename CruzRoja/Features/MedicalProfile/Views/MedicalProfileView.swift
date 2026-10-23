@@ -3,17 +3,20 @@ import SwiftUI
 struct MedicalProfileView: View {
     let container: AppContainer
     @State private var viewModel: MedicalProfileViewModel
+    @State private var dependents: DependentProfilesViewModel
     // Contact phones stay out of the QR unless the user opts in
     @AppStorage("qrIncludesContacts") private var qrIncludesContacts = false
     @State private var showsLogin = DemoMode.isActive("login")
     @State private var isEditing = false
     @State private var showsQR = false
+    @State private var isAddingDependent = false
 
     private var session: SessionStore { container.session }
 
     init(container: AppContainer) {
         self.container = container
         _viewModel = State(initialValue: container.makeMedicalProfileViewModel())
+        _dependents = State(initialValue: container.makeDependentProfilesViewModel())
     }
 
     var body: some View {
@@ -21,6 +24,7 @@ struct MedicalProfileView: View {
             List {
                 Section { account }
                 content
+                DependentsSection(viewModel: dependents) { isAddingDependent = true }
             }
             .navigationTitle("Perfil médico")
             .toolbar {
@@ -37,13 +41,19 @@ struct MedicalProfileView: View {
                     }
                 }
             }
-            .task { await viewModel.load() }
-            .refreshable { await viewModel.load() }
+            .task { await loadAll() }
+            .refreshable { await loadAll() }
+            .navigationDestination(for: DependentRoute.self) { route in
+                DependentProfileView(dependentID: route.id, viewModel: dependents)
+            }
             .sheet(isPresented: $showsLogin) {
                 LoginView(viewModel: container.makeAuthViewModel())
             }
             .sheet(isPresented: $isEditing) {
                 EditMedicalProfileView(profile: viewModel.profile ?? MedicalProfile(), viewModel: viewModel)
+            }
+            .sheet(isPresented: $isAddingDependent) {
+                EditDependentView(viewModel: dependents)
             }
             .fullScreenCover(isPresented: $showsQR) {
                 if let profile = viewModel.profile {
@@ -51,6 +61,13 @@ struct MedicalProfileView: View {
                 }
             }
         }
+    }
+
+    // Own profile and family members load in parallel
+    private func loadAll() async {
+        async let profile: Void = viewModel.load()
+        async let family: Void = dependents.load()
+        _ = await (profile, family)
     }
 
     // MARK: - Content by state
@@ -123,64 +140,9 @@ struct MedicalProfileView: View {
             }
         }
 
-        Section("Datos personales") {
-            LabeledContent("Nombre", value: profile.fullName)
-            if let age = profile.age() {
-                LabeledContent("Edad", value: "\(age) años")
-            }
-        }
-
-        Section("Datos médicos") {
-            LabeledContent("Tipo de sangre", value: profile.bloodType.label)
-            LabeledContent("Alergias", value: MedicalProfile.text(for: profile.allergies))
-            LabeledContent("Padecimientos", value: MedicalProfile.text(for: profile.conditions))
-            LabeledContent("Medicamentos", value: MedicalProfile.text(for: profile.medications))
-        }
-
-        Section("Contactos de emergencia") {
-            if profile.contacts.isEmpty {
-                Text("Sin contactos registrados")
-                    .foregroundStyle(.secondary)
-            }
-            ForEach(profile.contacts) { contact in
-                LabeledContent {
-                    if let url = URL(string: "tel:\(MedicalProfile.digitsOnly(contact.phone))") {
-                        Link(contact.formattedPhone, destination: url)
-                    }
-                } label: {
-                    VStack(alignment: .leading, spacing: 2) {
-                        Text(contact.name)
-                        Text(contact.relationship)
-                            .font(.caption)
-                            .foregroundStyle(.secondary)
-                    }
-                }
-            }
-        }
-
-        Section {
-            Button {
-                showsQR = true
-            } label: {
-                HStack(spacing: 16) {
-                    if let image = QRCodeGenerator.image(for: profile.qrText(includeContacts: qrIncludesContacts)) {
-                        Image(uiImage: image)
-                            .interpolation(.none)
-                            .resizable()
-                            .frame(width: 96, height: 96)
-                    }
-                    Text("El paramédico escanea el código y ve tu perfil. Toca para agrandarlo.")
-                        .font(.subheadline)
-                        .foregroundStyle(.secondary)
-                        .multilineTextAlignment(.leading)
-                }
-                .padding(.vertical, 4)
-            }
-            .buttonStyle(.plain)
-
-            Toggle("Incluir contactos en el código", isOn: $qrIncludesContacts)
-        } footer: {
-            Text("El código funciona sin internet. Cualquier persona que lo escanee puede leerlo.")
+        MedicalProfileDetailSections(profile: profile)
+        MedicalProfileQRSection(profile: profile, includesContacts: $qrIncludesContacts) {
+            showsQR = true
         }
     }
 
