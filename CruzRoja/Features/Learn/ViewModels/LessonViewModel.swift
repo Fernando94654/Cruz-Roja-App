@@ -5,7 +5,6 @@ import Observation
 @Observable
 final class LessonViewModel {
     let lesson: Lesson
-    var playback = 0.0
 
     private let speech: SpeechSynthesizing
 

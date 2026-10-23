@@ -12,9 +12,11 @@ struct EmergencyView: View {
     init(container: AppContainer) {
         self.container = container
         _path = State(initialValue: Self.demoPath)
-        var report = EmergencyReport()
-        if DemoMode.isActive("report", "vitals", "summary", "sent", "firstaid", "guide") { report.applyDictationSample() }
-        _reportViewModel = State(initialValue: container.makeEmergencyReportViewModel(report: report, isSent: DemoMode.isActive("sent")))
+        let prefilled = DemoMode.isActive("report", "vitals", "summary", "sent", "firstaid", "guide")
+        _reportViewModel = State(initialValue: container.makeEmergencyReportViewModel(
+            report: prefilled ? container.demoReport() : EmergencyReport(),
+            shareURL: DemoMode.isActive("sent") ? "http://localhost:8000/r/demo" : nil
+        ))
     }
 
     private static var demoPath: [EmergencyRoute] {
@@ -27,31 +29,38 @@ struct EmergencyView: View {
         }
     }
 
-    private var location: EmergencyLocation { reportViewModel.location }
-
     var body: some View {
         NavigationStack(path: $path) {
             ScrollView {
                 VStack(spacing: 16) {
                     VStack(alignment: .leading, spacing: 10) {
-                        Label("Ubicación exacta, ±\(location.accuracyMeters) m", systemImage: "location.fill")
-                            .font(.subheadline.weight(.medium))
-                            .padding(.horizontal, 12)
-                            .padding(.vertical, 6)
-                            .background(.gray.opacity(0.12), in: Capsule())
+                        if let location = reportViewModel.location {
+                            Label("Ubicación exacta, ±\(location.accuracyMeters) m", systemImage: "location.fill")
+                                .font(.subheadline.weight(.medium))
+                                .padding(.horizontal, 12)
+                                .padding(.vertical, 6)
+                                .background(.gray.opacity(0.12), in: Capsule())
 
-                        Map(initialPosition: .region(MKCoordinateRegion(
-                            center: CLLocationCoordinate2D(location.coordinate),
-                            span: MKCoordinateSpan(latitudeDelta: 0.006, longitudeDelta: 0.006)))) {
-                            Marker("Tú", coordinate: CLLocationCoordinate2D(location.coordinate))
-                                .tint(.black)
+                            Map(initialPosition: .region(MKCoordinateRegion(
+                                center: CLLocationCoordinate2D(location.coordinate),
+                                span: MKCoordinateSpan(latitudeDelta: 0.006, longitudeDelta: 0.006)))) {
+                                Marker("Tú", coordinate: CLLocationCoordinate2D(location.coordinate))
+                                    .tint(.black)
+                            }
+                            .frame(height: 170)
+                            .clipShape(RoundedRectangle(cornerRadius: 14))
+
+                            Text(location.address)
+                                .font(.footnote)
+                                .foregroundStyle(.secondary)
+                        } else {
+                            Label(reportViewModel.isLocating ? "Obteniendo ubicación…" : "Ubicación no disponible",
+                                  systemImage: "location.slash")
+                                .font(.subheadline.weight(.medium))
+                            Text("Activa la ubicación del teléfono antes de enviar el reporte.")
+                                .font(.footnote)
+                                .foregroundStyle(.secondary)
                         }
-                        .frame(height: 170)
-                        .clipShape(RoundedRectangle(cornerRadius: 14))
-
-                        Text(location.address)
-                            .font(.footnote)
-                            .foregroundStyle(.secondary)
                     }
 
                     Spacer(minLength: 24)
@@ -65,6 +74,7 @@ struct EmergencyView: View {
                 .padding()
             }
             .navigationTitle("Emergencia")
+            .task { await reportViewModel.locate() }
             .emergencyDestinations(report: reportViewModel, container: container)
         }
         .alert("¿Reportar una emergencia?", isPresented: $showsConfirmation) {

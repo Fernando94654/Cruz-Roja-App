@@ -9,6 +9,7 @@ extension View {
             case .summary: SummaryView(viewModel: viewModel)
             case .firstAid: FirstAidView(viewModel: container.makeFirstAidViewModel())
             case .guide(let guide): GuideView(viewModel: container.makeGuideViewModel(guide: guide))
+            case .lesson(let lesson): LessonView(viewModel: container.makeLessonViewModel(lesson: lesson))
             }
         }
     }

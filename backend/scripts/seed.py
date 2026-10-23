@@ -14,7 +14,6 @@ from app.models import (
     CircleMember,
     CommunityReport,
     EmergencyContact,
-    Lesson,
     MedicalProfile,
     OfficialAlert,
     User,
@@ -39,7 +38,7 @@ def main():
     password = PasswordHasher().hash("demo1234")
 
     with SessionLocal.begin() as s:
-        s.execute(text("TRUNCATE users, official_alerts, lessons CASCADE"))
+        s.execute(text("TRUNCATE users, official_alerts CASCADE"))
 
         me = User(id=DEMO_USER_ID, email="user@example.com", password_hash=password, name="María López",
                   phone="8110000001")
@@ -117,17 +116,6 @@ def main():
             CommunityReport(user_id=family[1][0].id, type=CommunityReportType.traffic_light,
                             details="Traffic light out at the intersection", location=point(25.6516, -100.2870),
                             expires_at=now + timedelta(hours=2)),
-        ])
-
-        s.add_all([
-            Lesson(title="CPR", duration_seconds=272, position=1,
-                   description="How to give chest compressions to an adult who isn't breathing while the ambulance arrives."),
-            Lesson(title="Choking", duration_seconds=190, position=2,
-                   description="What to do if someone can't breathe, cough or speak."),
-            Lesson(title="Bleeding", duration_seconds=165, position=3,
-                   description="How to control bleeding with direct pressure."),
-            Lesson(title="Burns", duration_seconds=185, position=4,
-                   description="First steps for minor and severe burns."),
         ])
 
     print("Seed complete")

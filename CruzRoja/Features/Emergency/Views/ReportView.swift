@@ -17,21 +17,53 @@ struct ReportView: View {
                     .listRowInsets(EdgeInsets())
 
                     if let name = viewModel.report.patientName {
-                        Label("Perfil médico de \(name) cargado", systemImage: "person.text.rectangle")
+                        Label("Paciente: \(name)", systemImage: "person.text.rectangle")
                             .font(.subheadline)
                     }
                 }
 
                 Section {
+                    TextField("Ej. Mi abuela se cayó en la casa y está confundida", text: $viewModel.report.description, axis: .vertical)
+                        .lineLimit(3...6)
+
                     Button {
-                        Task { await viewModel.dictate() }
+                        Task { await viewModel.toggleDictation() }
                     } label: {
-                        Label(viewModel.isListening ? "Escuchando…" : "Dictar", systemImage: "mic.fill")
-                            .frame(maxWidth: .infinity)
+                        Label(isListening ? "Detener dictado" : "Dictar", systemImage: isListening ? "stop.fill" : "mic.fill")
+                            .foregroundStyle(isListening ? Color.brandRed : Color.primary)
                     }
-                    .disabled(viewModel.isListening)
+                    .disabled(viewModel.isFilling)
+
+                    Button {
+                        Task { await viewModel.fillFromDescription() }
+                    } label: {
+                        HStack {
+                            if viewModel.isFilling {
+                                ProgressView()
+                                Text("Pensando…")
+                            } else {
+                                Label("Llenar con IA", systemImage: "sparkles")
+                            }
+                        }
+                        .foregroundStyle(Color.brandRed)
+                    }
+                    .disabled(viewModel.isFilling || isListening || viewModel.report.description.trimmingCharacters(in: .whitespaces).isEmpty)
+
+                    if let message = viewModel.fillMessage {
+                        VStack(alignment: .leading, spacing: 6) {
+                            Text(message)
+                                .font(.footnote)
+                                .foregroundStyle(.secondary)
+                            if viewModel.aiSummary != nil {
+                                Text(viewModel.summary)
+                                    .font(.subheadline.weight(.medium))
+                            }
+                        }
+                    }
+                } header: {
+                    Text("¿Qué está pasando?")
                 } footer: {
-                    Text("Describe lo que pasa y llenamos el reporte por ti.")
+                    Text("Escribe o dicta y llenamos el reporte por ti. Revisa los campos antes de enviar.")
                 }
 
                 Section("Incidente") {
@@ -44,15 +76,20 @@ struct ReportView: View {
                 Section("Ubicación") {
                     Label {
                         VStack(alignment: .leading) {
-                            Text(viewModel.location.address)
-                            Text("Automática · ±\(viewModel.location.accuracyMeters) m")
+                            Text(viewModel.location?.address ?? "Ubicación no disponible")
+                            Text(locationStatus)
                                 .font(.caption)
-                                .foregroundStyle(.secondary)
+                                .foregroundStyle(viewModel.location == nil && !viewModel.isLocating ? Color.brandRed : .secondary)
                         }
                     } icon: {
                         Image(systemName: "location.fill")
                     }
                     textField("Referencia", $viewModel.report.reference)
+                    if viewModel.location == nil && !viewModel.isLocating {
+                        Button("Reintentar ubicación") {
+                            Task { await viewModel.locate() }
+                        }
+                    }
                 }
 
                 Section("Estado del paciente") {
@@ -65,6 +102,14 @@ struct ReportView: View {
             .animation(.default, value: viewModel.report)
             .onAppear {
                 if DemoMode.isActive("vitals") { scroll.scrollTo("vitals", anchor: .top) }
+            }
+            .task { await viewModel.locate() }
+            .task { viewModel.prewarmAI() }
+            .onDisappear { if isListening { viewModel.dictation.stop() } }
+            .alert("Aviso", isPresented: hasError) {
+                Button("Aceptar", role: .cancel) {}
+            } message: {
+                Text(viewModel.errorMessage ?? "")
             }
         }
         .navigationTitle("Reporte")
@@ -81,6 +126,21 @@ struct ReportView: View {
             .padding()
             .background(.bar)
         }
+    }
+
+    private var isListening: Bool { viewModel.dictation.isListening }
+
+    private var locationStatus: String {
+        if viewModel.isLocating { return "Obteniendo ubicación…" }
+        guard let location = viewModel.location else { return "Activa la ubicación del teléfono para enviar el reporte" }
+        return "Automática · ±\(location.accuracyMeters) m"
+    }
+
+    private var hasError: Binding<Bool> {
+        Binding(
+            get: { viewModel.errorMessage != nil },
+            set: { if !$0 { viewModel.errorMessage = nil } }
+        )
     }
 
     private func textField(_ title: String, _ text: Binding<String>) -> some View {

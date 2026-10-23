@@ -16,13 +16,18 @@ final class FamilyViewModel {
     // Short confirmation shown after an action, the view hides it after a few seconds
     var notice: String?
 
-    // Fixed like the report location until CoreLocation is wired
-    let myLocation = EmergencyLocation.current.coordinate
+    private(set) var myLocation: Coordinate?
 
     private let service: FamilyServicing
+    private let locationProvider: LocationProviding
 
-    init(service: FamilyServicing) {
+    init(service: FamilyServicing, locationProvider: LocationProviding) {
         self.service = service
+        self.locationProvider = locationProvider
+    }
+
+    func locate() async {
+        myLocation = await locationProvider.current()?.coordinate
     }
 
     func member(id: UUID) -> FamilyMember? {
@@ -43,7 +48,7 @@ final class FamilyViewModel {
     }
 
     func distance(to member: FamilyMember) -> String? {
-        guard let coordinate = member.sharedCoordinate else { return nil }
+        guard let myLocation, let coordinate = member.sharedCoordinate else { return nil }
         let meters = CLLocation(latitude: myLocation.latitude, longitude: myLocation.longitude)
             .distance(from: CLLocation(latitude: coordinate.latitude, longitude: coordinate.longitude))
         return "a " + Measurement(value: meters, unit: UnitLength.meters)
@@ -141,7 +146,7 @@ final class FamilyViewModel {
     // MARK: - Reports
 
     // The report goes to where the member is, not where I am
-    func report(for member: FamilyMember) -> (EmergencyReport, EmergencyLocation) {
+    func report(for member: FamilyMember) -> (EmergencyReport, EmergencyLocation?) {
         var report = EmergencyReport()
         report.reportingFor = .familyMember
         report.patientName = member.name
@@ -149,7 +154,7 @@ final class FamilyViewModel {
             report.reason = "Avisó que necesita ayuda"
         }
 
-        guard let coordinate = member.sharedCoordinate else { return (report, .current) }
+        guard let coordinate = member.sharedCoordinate else { return (report, nil) }
         let updated = member.updatedAt.formatted(.relative(presentation: .named))
         let location = EmergencyLocation(coordinate: coordinate,
                                          address: "Ubicación de \(member.firstName), compartida \(updated)",

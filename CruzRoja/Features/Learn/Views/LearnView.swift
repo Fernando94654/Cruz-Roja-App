@@ -19,7 +19,7 @@ struct LearnView: View {
                             .frame(width: 110, height: 66)
                         VStack(alignment: .leading, spacing: 4) {
                             Text(lesson.title).font(.headline)
-                            Text("Video · \(lesson.duration)")
+                            Text(lesson.duration.map { "Video · \($0)" } ?? "Video educativo")
                                 .font(.subheadline)
                                 .foregroundStyle(.secondary)
                         }
@@ -27,6 +27,23 @@ struct LearnView: View {
                     .padding(.vertical, 4)
                 }
             }
+            .overlay {
+                if viewModel.isLoading && viewModel.lessons.isEmpty {
+                    ProgressView("Cargando lecciones…")
+                } else if let error = viewModel.errorMessage {
+                    ContentUnavailableView {
+                        Label("No se pudieron cargar las lecciones", systemImage: "wifi.exclamationmark")
+                    } description: {
+                        Text(error)
+                    } actions: {
+                        Button("Reintentar") { Task { await viewModel.load() } }
+                    }
+                } else if viewModel.hasLoaded && viewModel.lessons.isEmpty {
+                    ContentUnavailableView("Aún no hay lecciones", systemImage: "play.rectangle",
+                                           description: Text("Desliza hacia abajo para actualizar."))
+                }
+            }
+            .refreshable { await viewModel.load() }
             .navigationTitle("Aprende")
             .navigationDestination(for: Lesson.self) { lesson in
                 LessonView(viewModel: container.makeLessonViewModel(lesson: lesson))

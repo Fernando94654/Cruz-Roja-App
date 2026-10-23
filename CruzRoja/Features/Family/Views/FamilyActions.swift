@@ -116,8 +116,10 @@ struct FamilyMapSection: View {
     var body: some View {
         Section {
             Map(position: $position, selection: $selectedID) {
-                Marker("Tú", systemImage: "person.fill", coordinate: CLLocationCoordinate2D(viewModel.myLocation))
-                    .tint(.blue)
+                if let myLocation = viewModel.myLocation {
+                    Marker("Tú", systemImage: "person.fill", coordinate: CLLocationCoordinate2D(myLocation))
+                        .tint(.blue)
+                }
                 ForEach(viewModel.membersOnMap) { member in
                     if let coordinate = member.sharedCoordinate {
                         Marker(member.firstName, systemImage: "person.fill",

@@ -1,7 +1,10 @@
+import MessageUI
 import SwiftUI
 
 struct SummaryView: View {
     let viewModel: EmergencyReportViewModel
+    @State private var showsComposer = false
+    @State private var copied = false
 
     private var report: EmergencyReport { viewModel.report }
 
@@ -9,11 +12,26 @@ struct SummaryView: View {
         List {
             if viewModel.isSent {
                 Section("Seguimiento") {
-                    Label("Ubicación compartida por SMS y enlace", systemImage: "checkmark.circle.fill")
-                        .foregroundStyle(Color.primary)
-                    trackingStep("Recibido", "17:42", done: true)
-                    trackingStep("Unidad asignada", "Ambulancia 214 · 17:43", done: true)
-                    trackingStep("En camino", "≈ 8 min", done: false)
+                    trackingStep("Reporte recibido", "Guardado en Cruz Roja", done: true)
+                    trackingStep("Ubicación enviada", "SMS al operador con enlace", done: true)
+                    trackingStep("Unidad en camino", "Ambulancia 214 · ≈ 8 min", done: false)
+                }
+
+                Section("Enlace para el operador") {
+                    Text(viewModel.shareURL ?? "")
+                        .foregroundStyle(Color.brandRed)
+                        .textSelection(.enabled)
+                    HStack {
+                        if MFMessageComposeViewController.canSendText() {
+                            Button("Enviar SMS de nuevo") { showsComposer = true }
+                        }
+                        Button(copied ? "Copiado" : "Copiar enlace") {
+                            UIPasteboard.general.string = viewModel.shareURL
+                            copied = true
+                        }
+                    }
+                    .buttonStyle(.bordered)
+                    .tint(.primary)
                 }
 
                 Section {
@@ -21,6 +39,11 @@ struct SummaryView: View {
                         Label("Ver instrucciones de primeros auxilios", systemImage: "bandage")
                     }
                 }
+            }
+
+            Section("Resumen para el operador") {
+                Text(viewModel.summary)
+                    .fontWeight(.medium)
             }
 
             Section {
@@ -33,31 +56,57 @@ struct SummaryView: View {
                 row("Respiración", report.breathing)
                 row("Color de piel", report.skin)
                 row("Referencia", report.reference)
-                row("Ubicación", "±\(viewModel.location.accuracyMeters) m")
+                row("Ubicación", viewModel.location?.address ?? "Ubicación no disponible")
             } header: {
-                Text("Resumen del reporte")
+                Text("Detalle del reporte")
             } footer: {
-                Text("Generado a partir de lo que dictaste. Revisa que esté correcto.")
+                Text("Generado a partir de lo que escribiste o dictaste. Revisa que esté correcto.")
             }
 
             if !viewModel.isSent {
                 Section {
                     Button {
-                        Task { await viewModel.send() }
+                        Task {
+                            // The simulator can't send SMS; the link stays on screen to copy
+                            if await viewModel.send(), MFMessageComposeViewController.canSendText() {
+                                showsComposer = true
+                            }
+                        }
                     } label: {
-                        Text("Enviar a Cruz Roja")
+                        Text(viewModel.isSending ? "Enviando…" : "Enviar a Cruz Roja")
                             .font(.headline)
                             .foregroundStyle(.white)
                             .frame(maxWidth: .infinity)
                     }
-                    .disabled(viewModel.isSending)
+                    .disabled(viewModel.isSending || viewModel.location == nil)
                     .listRowBackground(Color.brandRed)
+                    if viewModel.location == nil {
+                        Text("Vuelve al reporte y activa la ubicación del teléfono para poder enviarlo.")
+                            .font(.footnote)
+                            .foregroundStyle(Color.brandRed)
+                    }
                 }
             }
         }
         .animation(.default, value: viewModel.isSent)
         .navigationTitle(viewModel.isSent ? "Reporte enviado" : "Revisar reporte")
         .navigationBarTitleDisplayMode(.inline)
+        .sheet(isPresented: $showsComposer) {
+            MessageComposer(recipient: viewModel.operatorPhone, body: viewModel.smsBody)
+                .ignoresSafeArea()
+        }
+        .alert("No se pudo enviar", isPresented: hasError) {
+            Button("Aceptar", role: .cancel) {}
+        } message: {
+            Text(viewModel.errorMessage ?? "")
+        }
+    }
+
+    private var hasError: Binding<Bool> {
+        Binding(
+            get: { viewModel.errorMessage != nil },
+            set: { if !$0 { viewModel.errorMessage = nil } }
+        )
     }
 
     private func row(_ title: String, _ value: String) -> some View {
@@ -77,8 +126,40 @@ struct SummaryView: View {
     }
 }
 
+// Native SMS composer prefilled with the summary and the operator link
+struct MessageComposer: UIViewControllerRepresentable {
+    let recipient: String
+    let body: String
+    @Environment(\.dismiss) private var dismiss
+
+    func makeUIViewController(context: Context) -> MFMessageComposeViewController {
+        let controller = MFMessageComposeViewController()
+        controller.recipients = [recipient]
+        controller.body = body
+        controller.messageComposeDelegate = context.coordinator
+        return controller
+    }
+
+    func updateUIViewController(_ controller: MFMessageComposeViewController, context: Context) {}
+
+    func makeCoordinator() -> Coordinator {
+        Coordinator(dismiss: dismiss)
+    }
+
+    final class Coordinator: NSObject, MFMessageComposeViewControllerDelegate {
+        let dismiss: DismissAction
+
+        init(dismiss: DismissAction) {
+            self.dismiss = dismiss
+        }
+
+        func messageComposeViewController(_ controller: MFMessageComposeViewController, didFinishWith result: MessageComposeResult) {
+            dismiss()
+        }
+    }
+}
+
 #Preview {
-    var report = EmergencyReport()
-    report.applyDictationSample()
-    return NavigationStack { SummaryView(viewModel: AppContainer.preview.makeEmergencyReportViewModel(report: report)) }
+    let container = AppContainer.preview
+    NavigationStack { SummaryView(viewModel: container.makeEmergencyReportViewModel(report: container.demoReport())) }
 }

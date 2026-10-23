@@ -37,6 +37,9 @@ struct FamilyView: View {
                 .task(id: canSeeFamily) {
                     if canSeeFamily { await viewModel.load() }
                 }
+                .task(id: canSeeFamily) {
+                    if canSeeFamily { await viewModel.locate() }
+                }
                 // Checks again while someone hasn't answered "¿Estás bien?"
                 .task(id: viewModel.isWaitingForAnswers) {
                     while viewModel.isWaitingForAnswers && !Task.isCancelled {
@@ -195,7 +198,7 @@ struct FamilyView: View {
         startReport(report, location: location)
     }
 
-    private func startReport(_ report: EmergencyReport, location: EmergencyLocation = .current) {
+    private func startReport(_ report: EmergencyReport, location: EmergencyLocation? = nil) {
         reportViewModel = container.makeEmergencyReportViewModel(report: report, location: location)
         path.append(EmergencyRoute.report)
     }
