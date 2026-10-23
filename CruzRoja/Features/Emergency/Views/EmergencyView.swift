@@ -29,31 +29,38 @@ struct EmergencyView: View {
         }
     }
 
-    private var location: EmergencyLocation { reportViewModel.location }
-
     var body: some View {
         NavigationStack(path: $path) {
             ScrollView {
                 VStack(spacing: 16) {
                     VStack(alignment: .leading, spacing: 10) {
-                        Label("Ubicación exacta, ±\(location.accuracyMeters) m", systemImage: "location.fill")
-                            .font(.subheadline.weight(.medium))
-                            .padding(.horizontal, 12)
-                            .padding(.vertical, 6)
-                            .background(.gray.opacity(0.12), in: Capsule())
+                        if let location = reportViewModel.location {
+                            Label("Ubicación exacta, ±\(location.accuracyMeters) m", systemImage: "location.fill")
+                                .font(.subheadline.weight(.medium))
+                                .padding(.horizontal, 12)
+                                .padding(.vertical, 6)
+                                .background(.gray.opacity(0.12), in: Capsule())
 
-                        Map(initialPosition: .region(MKCoordinateRegion(
-                            center: CLLocationCoordinate2D(location.coordinate),
-                            span: MKCoordinateSpan(latitudeDelta: 0.006, longitudeDelta: 0.006)))) {
-                            Marker("Tú", coordinate: CLLocationCoordinate2D(location.coordinate))
-                                .tint(.black)
+                            Map(initialPosition: .region(MKCoordinateRegion(
+                                center: CLLocationCoordinate2D(location.coordinate),
+                                span: MKCoordinateSpan(latitudeDelta: 0.006, longitudeDelta: 0.006)))) {
+                                Marker("Tú", coordinate: CLLocationCoordinate2D(location.coordinate))
+                                    .tint(.black)
+                            }
+                            .frame(height: 170)
+                            .clipShape(RoundedRectangle(cornerRadius: 14))
+
+                            Text(location.address)
+                                .font(.footnote)
+                                .foregroundStyle(.secondary)
+                        } else {
+                            Label(reportViewModel.isLocating ? "Obteniendo ubicación…" : "Ubicación no disponible",
+                                  systemImage: "location.slash")
+                                .font(.subheadline.weight(.medium))
+                            Text("Activa la ubicación del teléfono antes de enviar el reporte.")
+                                .font(.footnote)
+                                .foregroundStyle(.secondary)
                         }
-                        .frame(height: 170)
-                        .clipShape(RoundedRectangle(cornerRadius: 14))
-
-                        Text(location.address)
-                            .font(.footnote)
-                            .foregroundStyle(.secondary)
                     }
 
                     Spacer(minLength: 24)

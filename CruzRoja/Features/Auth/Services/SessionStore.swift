@@ -24,6 +24,7 @@ final class SessionStore {
     }
 
     func signOut() {
+        AuthToken.clear()
         isSignedIn = false
         defaults.set(false, forKey: Keys.signedIn)
     }

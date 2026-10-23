@@ -5,6 +5,8 @@ import pytest
 from cryptography.fernet import Fernet
 from sqlalchemy.engine import make_url
 
+os.environ.setdefault("JWT_SECRET", "test-secret-that-is-long-enough-for-hs256")
+
 # Never load .env or derive a test target from the application's database.
 _raw_url = os.environ.get("TEST_DATABASE_URL")
 if not _raw_url:

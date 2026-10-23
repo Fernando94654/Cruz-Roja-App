@@ -57,9 +57,11 @@ final class AppContainer {
         ambulance: AmbulanceTracker(),
         locationProvider: CoreLocationService(),
         dictation: SpeechDictation(),
+        authService: AuthAPIService(),
         medicalProfileService: MedicalProfileAPIService(),
         emergencyReportService: EmergencyReportAPIService(),
         reportExtractor: FallbackReportExtractor(),
+        familyService: DemoMode.isActive("family") ? MockFamilyService() : FamilyAPIService(),
         lessonsService: LessonsAPIService()
     )
 
@@ -83,10 +85,12 @@ final class AppContainer {
         MedicalProfileViewModel(service: medicalProfileService, cache: medicalProfileCache)
     }
 
-    func makeEmergencyReportViewModel(report: EmergencyReport = EmergencyReport(), shareURL: String? = nil) -> EmergencyReportViewModel {
+    func makeEmergencyReportViewModel(report: EmergencyReport = EmergencyReport(),
+                                      location: EmergencyLocation? = nil, shareURL: String? = nil) -> EmergencyReportViewModel {
         let cache = medicalProfileCache
         return EmergencyReportViewModel(
             report: report,
+            location: location,
             shareURL: shareURL,
             service: emergencyReportService,
             extractor: reportExtractor,
@@ -120,7 +124,7 @@ final class AppContainer {
     }
 
     func makeFamilyViewModel() -> FamilyViewModel {
-        FamilyViewModel(service: familyService)
+        FamilyViewModel(service: familyService, locationProvider: locationProvider)
     }
 
     func makeLearnViewModel() -> LearnViewModel {

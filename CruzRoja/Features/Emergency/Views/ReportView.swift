@@ -76,15 +76,20 @@ struct ReportView: View {
                 Section("Ubicación") {
                     Label {
                         VStack(alignment: .leading) {
-                            Text(viewModel.location.address)
+                            Text(viewModel.location?.address ?? "Ubicación no disponible")
                             Text(locationStatus)
                                 .font(.caption)
-                                .foregroundStyle(viewModel.location.isFallback && !viewModel.isLocating ? Color.brandRed : .secondary)
+                                .foregroundStyle(viewModel.location == nil && !viewModel.isLocating ? Color.brandRed : .secondary)
                         }
                     } icon: {
                         Image(systemName: "location.fill")
                     }
                     textField("Referencia", $viewModel.report.reference)
+                    if viewModel.location == nil && !viewModel.isLocating {
+                        Button("Reintentar ubicación") {
+                            Task { await viewModel.locate() }
+                        }
+                    }
                 }
 
                 Section("Estado del paciente") {
@@ -127,8 +132,8 @@ struct ReportView: View {
 
     private var locationStatus: String {
         if viewModel.isLocating { return "Obteniendo ubicación…" }
-        if viewModel.location.isFallback { return "Ubicación aproximada · activa la ubicación del teléfono" }
-        return "Automática · ±\(viewModel.location.accuracyMeters) m"
+        guard let location = viewModel.location else { return "Activa la ubicación del teléfono para enviar el reporte" }
+        return "Automática · ±\(location.accuracyMeters) m"
     }
 
     private var hasError: Binding<Bool> {

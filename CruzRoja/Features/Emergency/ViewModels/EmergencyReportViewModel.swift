@@ -8,7 +8,7 @@ final class EmergencyReportViewModel {
         // A manual edit makes the AI summary stale
         didSet { if !isApplyingFill, oldValue != report { aiSummary = nil } }
     }
-    private(set) var location: EmergencyLocation = .fallback
+    private(set) var location: EmergencyLocation?
     private(set) var isFilling = false
     // Tells the user what "Llenar con IA" did
     private(set) var fillMessage: String?
@@ -24,6 +24,7 @@ final class EmergencyReportViewModel {
     private let service: EmergencyReportServicing
     private let extractor: ReportExtracting
     private let locationProvider: LocationProviding
+    private let hasProvidedLocation: Bool
     // Summary of the user's own medical profile, attached when reporting for themselves
     private let medicalSummary: () -> String?
     private var textBeforeDictation = ""
@@ -31,6 +32,7 @@ final class EmergencyReportViewModel {
 
     init(
         report: EmergencyReport = EmergencyReport(),
+        location: EmergencyLocation? = nil,
         shareURL: String? = nil,
         service: EmergencyReportServicing,
         extractor: ReportExtracting,
@@ -39,6 +41,8 @@ final class EmergencyReportViewModel {
         medicalSummary: @escaping () -> String?
     ) {
         self.report = report
+        self.location = location
+        self.hasProvidedLocation = location != nil
         self.shareURL = shareURL
         self.service = service
         self.extractor = extractor
@@ -113,11 +117,12 @@ final class EmergencyReportViewModel {
     }
 
     func locate() async {
+        guard !hasProvidedLocation else { return }
         guard !isLocating else { return }
         isLocating = true
         defer { isLocating = false }
         guard let current = await locationProvider.current() else {
-            location = .fallback
+            location = nil
             return
         }
         let address = current.address ?? String(format: "%.5f, %.5f", current.coordinate.latitude, current.coordinate.longitude)
@@ -127,6 +132,10 @@ final class EmergencyReportViewModel {
     // Returns true when the report was stored so the view can open the SMS composer
     func send() async -> Bool {
         guard !isSending else { return false }
+        guard let location else {
+            errorMessage = "No se pudo obtener la ubicación. Activa el permiso de ubicación e inténtalo de nuevo."
+            return false
+        }
         isSending = true
         defer { isSending = false }
         do {
