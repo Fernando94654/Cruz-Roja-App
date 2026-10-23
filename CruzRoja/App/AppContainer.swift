@@ -55,13 +55,12 @@ final class AppContainer {
         session: SessionStore(),
         speech: SpeechService(),
         ambulance: AmbulanceTracker(),
-        medicalProfileService: MedicalProfileAPIService(),
-        lessonsService: LessonsAPIService()
         locationProvider: CoreLocationService(),
         dictation: SpeechDictation(),
         medicalProfileService: MedicalProfileAPIService(),
         emergencyReportService: EmergencyReportAPIService(),
-        reportExtractor: FallbackReportExtractor()
+        reportExtractor: FallbackReportExtractor(),
+        lessonsService: LessonsAPIService()
     )
 
     static let preview = AppContainer(

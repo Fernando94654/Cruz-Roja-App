@@ -1,7 +1,6 @@
 from fastapi import FastAPI
 
-from app.routers import lessons, medical_profiles
-from app.routers import emergency_reports, medical_profiles
+from app.routers import emergency_reports, lessons, medical_profiles
 
 app = FastAPI(title="Enlace Vital API", version="0.1.0")
 

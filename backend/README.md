@@ -47,23 +47,21 @@ From the repository root, run the Swift behavior checks with `bash tests/swift/r
 
 ## Curated YouTube lessons
 
-`GET /lessons` returns the database records ordered by `position`, then `id`, with nullable `guide_id`, `description`, `video_url`, `publisher`, and `duration_seconds`, plus ordered `steps`. Unknown UUIDs get `guide_id: null`. An empty catalog returns `[]`; database failures return a generic 503. The app decodes the UUID and lesson content directly, without generating a replacement or falling back to sample lessons. The emergency assistant's guide text remains local for this version.
+`GET /lessons` returns the database records ordered by `position`, then `id`, with nullable `guide_id`, `description`, `video_url`, `publisher`, and `duration_seconds`, plus ordered `steps`. An empty catalog returns `[]`; database failures return a generic 503. The app decodes the UUID and lesson content directly, without generating a replacement or falling back to sample lessons. The emergency assistant's guide text remains local for this version.
 
-The four reviewed UUIDs and expected original values are in `app/lesson_catalog.py`. To update only those records:
+Migration `0005` added the publisher and ordered steps columns. The four YouTube lessons were populated in Supabase before this change. Migration `0006` adds `guide_id` and backfills its four existing rows by UUID; afterward, lesson associations are edited in Supabase like any other lesson field. The API has no hardcoded UUID-to-guide catalog, and the completed one-time lesson updater has been removed.
 
 ```bash
-# From backend, using the DATABASE_URL configured for the app:
-.venv/bin/alembic upgrade 0005                           # add publisher and ordered steps after revision 0004
-.venv/bin/python -m scripts.update_lesson_videos          # validate, then roll back
-.venv/bin/python -m scripts.update_lesson_videos --apply  # commit the scoped update
+# From backend, using the DATABASE_URL configured for the app, after checking its current revision:
+.venv/bin/alembic upgrade head
 ```
 
-Migration `0005` adds a nullable publisher and an ordered PostgreSQL text array for steps. The two earlier migration files restored in this checkout are copied unchanged from `origin/main`. The updater locks the four records in UUID order and checks every previous value before changing any record. A missing record or unexpected edit aborts the transaction. Already-updated records are skipped, so a second run updates zero rows. IDs and positions are preserved; unverified sample durations are cleared. New lessons can use any publisher and ordered step list; these values are served from the database.
+New lessons can use any publisher, guide ID, and ordered step list. The development seed no longer clears or inserts lesson samples.
 
-**Do not run `scripts/seed.py` against shared Supabase:** it truncates shared tables. Before upgrading an existing database, check its Alembic revision and apply only pending migrations. The Supabase database was at `0004` before this change, so only `0005` was applied there.
+**Do not run `scripts/seed.py` against shared Supabase:** it still truncates shared user and alert tables. Before upgrading an existing database, check its Alembic revision and apply only pending migrations.
 
 The app loads YouTube's embed URL directly in `WKWebView`, passing its installed bundle identifier in the HTTPS `Referer` header as [YouTube requires](https://developers.google.com/youtube/terms/required-minimum-functionality). It uses YouTube controls, inline playback, and no autoplay. WebKit's native playback-state query is checked while the lesson is visible so speech stops when a video begins. A validated external YouTube link remains available if embedding fails. Leaving the lesson unloads the player and stops speech; backgrounding pauses playback. Emergency video loading never blocks the existing text/voice guidance.
-Tests never touch Supabase: they create a throwaway database next to `TEST_DATABASE_URL` (the local docker Postgres), run the migrations and roll back every test.
+Tests never touch Supabase: they create the explicitly named local `_test` database, run the migrations, and roll back every test.
 
 ## Structure
 

@@ -14,4 +14,4 @@ class LessonOut(BaseModel):
     publisher: str | None
     steps: list[str]
     position: int
-    guide_id: str | None = None
+    guide_id: str | None
