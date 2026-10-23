@@ -7,7 +7,7 @@ final class AppContainer {
     let speech: SpeechSynthesizing
     let ambulance: AmbulanceTracker
     let locationProvider: LocationProviding
-    let dictation: Dictating
+    private let dictationFactory: @MainActor () -> Dictating
 
     private let authService: AuthServicing
     private let medicalProfileService: MedicalProfileServicing
@@ -24,7 +24,7 @@ final class AppContainer {
         speech: SpeechSynthesizing,
         ambulance: AmbulanceTracker,
         locationProvider: LocationProviding,
-        dictation: Dictating,
+        dictation: @escaping @MainActor () -> Dictating,
         authService: AuthServicing = MockAuthService(),
         medicalProfileService: MedicalProfileServicing,
         medicalProfileCache: MedicalProfileCache = MedicalProfileCache(),
@@ -39,7 +39,7 @@ final class AppContainer {
         self.speech = speech
         self.ambulance = ambulance
         self.locationProvider = locationProvider
-        self.dictation = dictation
+        self.dictationFactory = dictation
         self.authService = authService
         self.medicalProfileService = medicalProfileService
         self.medicalProfileCache = medicalProfileCache
@@ -56,7 +56,7 @@ final class AppContainer {
         speech: SpeechService(),
         ambulance: AmbulanceTracker(),
         locationProvider: CoreLocationService(),
-        dictation: SpeechDictation(),
+        dictation: { SpeechDictation() },
         authService: AuthAPIService(),
         medicalProfileService: MedicalProfileAPIService(),
         emergencyReportService: EmergencyReportAPIService(),
@@ -74,7 +74,7 @@ final class AppContainer {
             address: "Ubicación simulada, Monterrey, Nuevo León",
             accuracyMeters: 100
         )),
-        dictation: SpeechDictation(),
+        dictation: { SpeechDictation() },
         medicalProfileService: MockMedicalProfileService(),
         medicalProfileCache: MedicalProfileCache(directory: FileManager.default.temporaryDirectory),
         lessonsService: LessonsAPIService()
@@ -100,7 +100,7 @@ final class AppContainer {
             service: emergencyReportService,
             extractor: reportExtractor,
             locationProvider: locationProvider,
-            dictation: dictation,
+            dictation: dictationFactory(),
             medicalSummary: { cache.load()?.reportSummary }
         )
     }

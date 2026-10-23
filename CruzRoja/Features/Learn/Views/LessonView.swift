@@ -18,11 +18,19 @@ struct LessonView: View {
             VStack(alignment: .leading, spacing: 16) {
                 if let video = lesson.video {
                     if playerViewModel.isVisible {
-                        YouTubePlayer(video: video, controller: playerViewModel.player,
-                                      onLoad: { playerViewModel.didLoad(revision: revision) },
-                                      onFailure: { playerViewModel.didFail(revision: revision) })
-                            .id(revision)
-                            .frame(height: 240)
+                        ZStack {
+                            YouTubePlayer(video: video, controller: playerViewModel.player,
+                                          onLoad: { playerViewModel.didLoad(revision: revision) },
+                                          onFailure: { playerViewModel.didFail(revision: revision) })
+                                .id(revision)
+                                .allowsHitTesting(!playerViewModel.isLoading && !playerViewModel.isUnavailable)
+
+                            if playerViewModel.isLoading || playerViewModel.isUnavailable {
+                                LessonThumbnail(lesson: lesson)
+                                    .allowsHitTesting(false)
+                            }
+                        }
+                        .frame(height: 240)
                     }
                     if playerViewModel.isLoading { ProgressView("Cargando video…") }
                     if playerViewModel.isUnavailable {
