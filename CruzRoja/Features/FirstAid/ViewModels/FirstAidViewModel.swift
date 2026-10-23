@@ -11,7 +11,9 @@ final class FirstAidViewModel {
 
     let ambulance: AmbulanceTracker
     let speech: SpeechSynthesizing
+    let lessons: LearnViewModel
     private let assistant: FirstAidAssisting
+    private var isActive = true
 
     let suggestions = [
         "Mi papá no respira y no responde",
@@ -23,18 +25,21 @@ final class FirstAidViewModel {
     var guides: [FirstAidGuide] { FirstAidGuide.catalog }
     var hasDraft: Bool { !draft.trimmingCharacters(in: .whitespaces).isEmpty }
 
-    init(assistant: FirstAidAssisting, speech: SpeechSynthesizing, ambulance: AmbulanceTracker, messages: [ChatMessage] = []) {
+    init(assistant: FirstAidAssisting, speech: SpeechSynthesizing, ambulance: AmbulanceTracker, lessonsService: LessonsServicing, messages: [ChatMessage] = []) {
         self.assistant = assistant
         self.speech = speech
         self.ambulance = ambulance
         self.messages = messages
+        lessons = LearnViewModel(service: lessonsService)
     }
 
     func start() {
+        isActive = true
         ambulance.request()
     }
 
     func stop() {
+        isActive = false
         speech.stop()
     }
 
@@ -52,7 +57,7 @@ final class FirstAidViewModel {
         let answer = await assistant.answer(question)
         isThinking = false
         messages.append(.assistant(answer))
-        speech.speak(answer.text)
+        if isActive { speech.speak(answer.text) }
     }
 
     // Fixed phrase until on-device speech recognition exists
@@ -61,6 +66,7 @@ final class FirstAidViewModel {
         isListening = true
         try? await Task.sleep(for: .seconds(2))
         isListening = false
+        guard isActive, !Task.isCancelled else { return }
         await send("Mi abuela se desmayó y está mareada")
     }
 

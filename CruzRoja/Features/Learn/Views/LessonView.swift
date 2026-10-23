@@ -2,35 +2,49 @@ import SwiftUI
 
 struct LessonView: View {
     @State private var viewModel: LessonViewModel
+    @State private var playerViewModel: LessonPlayerViewModel<YouTubePlayerController>
+    @Environment(\.scenePhase) private var scenePhase
 
     init(viewModel: LessonViewModel) {
         _viewModel = State(initialValue: viewModel)
+        _playerViewModel = State(initialValue: LessonPlayerViewModel(lesson: viewModel, makePlayer: YouTubePlayerController.init))
     }
 
     private var lesson: Lesson { viewModel.lesson }
 
     var body: some View {
-        ScrollView {
+        let revision = playerViewModel.revision
+        return ScrollView {
             VStack(alignment: .leading, spacing: 16) {
-                // Placeholder player until lesson videos exist
-                LessonThumbnail()
-                    .aspectRatio(16/9, contentMode: .fit)
-
-                VStack(spacing: 4) {
-                    Slider(value: $viewModel.playback)
-                        .tint(Color.brandRed)
-                    HStack {
-                        Text("0:00")
-                        Spacer()
-                        Text(lesson.duration)
+                if let video = lesson.video {
+                    if playerViewModel.isVisible {
+                        YouTubePlayer(video: video, controller: playerViewModel.player,
+                                      onLoad: { playerViewModel.didLoad(revision: revision) },
+                                      onFailure: { playerViewModel.didFail(revision: revision) })
+                            .id(revision)
+                            .frame(height: 240)
                     }
-                    .font(.caption.monospacedDigit())
-                    .foregroundStyle(.secondary)
+                    if playerViewModel.isLoading { ProgressView("Cargando video…") }
+                    if playerViewModel.isUnavailable {
+                        Text("No se pudo cargar el reproductor. Puedes reintentar o abrir el video en YouTube.")
+                            .font(.subheadline).foregroundStyle(.secondary)
+                        Button("Reintentar video") {
+                            playerViewModel.retry()
+                        }
+                    }
+                    Link("Abrir en YouTube", destination: video.url)
+                        .simultaneousGesture(TapGesture().onEnded {
+                            playerViewModel.openInYouTube()
+                        })
+                } else {
+                    Label("Video no disponible", systemImage: "video.slash")
+                        .foregroundStyle(.secondary)
                 }
 
                 Text(lesson.title).font(.brand(28))
-                Text(lesson.summary)
-                    .foregroundStyle(.secondary)
+                if let summary = lesson.summary {
+                    Text(summary).foregroundStyle(.secondary)
+                }
 
                 ForEach(Array(lesson.steps.enumerated()), id: \.offset) { i, step in
                     HStack(alignment: .top, spacing: 12) {
@@ -45,7 +59,7 @@ struct LessonView: View {
                 }
 
                 Button {
-                    viewModel.toggleSpeech()
+                    playerViewModel.toggleSpeech()
                 } label: {
                     Label(viewModel.isSpeaking ? "Detener" : "Escuchar lección",
                           systemImage: viewModel.isSpeaking ? "stop.fill" : "speaker.wave.2.fill")
@@ -55,16 +69,22 @@ struct LessonView: View {
 
                 Divider()
 
-                Label("Lección certificada por instructores de Cruz Roja", systemImage: "checkmark.seal")
-                    .font(.subheadline)
+                if let publisher = lesson.publisher {
+                    Label("Video publicado por \(publisher)", systemImage: "play.rectangle")
+                        .font(.subheadline)
+                }
             }
             .padding()
         }
         .navigationBarTitleDisplayMode(.inline)
-        .onDisappear { viewModel.stop() }
+        .onAppear {
+            playerViewModel.appear()
+        }
+        .onDisappear {
+            playerViewModel.disappear()
+        }
+        .onChange(of: scenePhase) {
+            playerViewModel.scenePhaseChanged(isActive: scenePhase == .active)
+        }
     }
-}
-
-#Preview {
-    NavigationStack { LessonView(viewModel: AppContainer.preview.makeLessonViewModel(lesson: Lesson.samples[0])) }
 }

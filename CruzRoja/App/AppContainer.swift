@@ -59,7 +59,8 @@ final class AppContainer {
         dictation: SpeechDictation(),
         medicalProfileService: MedicalProfileAPIService(),
         emergencyReportService: EmergencyReportAPIService(),
-        reportExtractor: FallbackReportExtractor()
+        reportExtractor: FallbackReportExtractor(),
+        lessonsService: LessonsAPIService()
     )
 
     static let preview = AppContainer(
@@ -107,11 +108,11 @@ final class AppContainer {
         if DemoMode.isActive("firstaid") {
             messages = [.user(UUID(), "Me corté y sangra mucho"), .assistant(KeywordFirstAidAssistant().search("sangra"))]
         }
-        return FirstAidViewModel(assistant: firstAidAssistant, speech: speech, ambulance: ambulance, messages: messages)
+        return FirstAidViewModel(assistant: firstAidAssistant, speech: speech, ambulance: ambulance, lessonsService: lessonsService, messages: messages)
     }
 
     func makeGuideViewModel(guide: FirstAidGuide) -> GuideViewModel {
-        GuideViewModel(guide: guide, speech: speech, ambulance: ambulance)
+        GuideViewModel(guide: guide, speech: speech, ambulance: ambulance, lessonsService: lessonsService)
     }
 
     func makeAlertsViewModel() -> AlertsViewModel {
