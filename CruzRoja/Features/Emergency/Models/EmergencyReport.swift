@@ -12,11 +12,18 @@ enum ReportingFor: CaseIterable, Hashable, Sendable {
         case .familyMember: "Para un familiar"
         }
     }
+
+    // Value expected by the backend's reporting_for enum
+    var wireValue: String {
+        self == .myself ? "self" : "other"
+    }
 }
 
 struct EmergencyReport: Hashable, Sendable {
     var reportingFor: ReportingFor = .myself
     var patientName: String?
+    // Free text typed or dictated by the user
+    var description = ""
     var reason = ""
     var injuredCount = 1
     var injury = ""
@@ -30,28 +37,21 @@ struct EmergencyReport: Hashable, Sendable {
     static let breathingOptions = ["Normal", "Con dificultad", "No respira"]
     static let skinColors = ["Normal", "Pálida", "Azulada"]
 
-    // Fixed result until on-device speech recognition and AI extraction exist
-    mutating func applyDictationSample() {
-        reason = "Caída en casa"
-        injuredCount = 1
-        injury = "Golpe en la cabeza"
-        place = "Casa habitación"
-        reference = "2.º piso, puerta azul"
-        mentalState = "Confundido"
-        breathing = "Normal"
-        skin = "Pálida"
-    }
+    // Used by the screenshot demo modes
+    static let demoDescription = "Mi abuela se cayó en la casa y se golpeó la cabeza, está confundida y pálida pero respira bien"
 }
 
 struct EmergencyLocation: Hashable, Sendable {
     let coordinate: Coordinate
     let address: String
     let accuracyMeters: Int
+    // True when it's the fixed fallback because location isn't available
+    var isFallback = false
 
-    // Fixed until CoreLocation is wired
-    static let current = EmergencyLocation(
+    static let fallback = EmergencyLocation(
         coordinate: .monterrey,
         address: "Av. Eugenio Garza Sada 2501 Sur, Monterrey, N.L.",
-        accuracyMeters: 5
+        accuracyMeters: 5,
+        isFallback: true
     )
 }
