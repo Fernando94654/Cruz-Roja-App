@@ -8,4 +8,7 @@ enum APIConfig {
     static let demoUserID = UUID(uuidString: "00000000-0000-4000-8000-000000000001")!
 
     static let timeout: TimeInterval = 10
+
+    // Cruz Roja operator number that receives the SMS; demo value
+    static let operatorPhone = "8112345678"
 }

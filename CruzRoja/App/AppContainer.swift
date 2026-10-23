@@ -6,11 +6,14 @@ final class AppContainer {
     let session: SessionStore
     let speech: SpeechSynthesizing
     let ambulance: AmbulanceTracker
+    let locationProvider: LocationProviding
+    let dictation: Dictating
 
     private let authService: AuthServicing
     private let medicalProfileService: MedicalProfileServicing
     private let medicalProfileCache: MedicalProfileCache
     private let emergencyReportService: EmergencyReportServicing
+    private let reportExtractor: ReportExtracting
     private let firstAidAssistant: FirstAidAssisting
     private let alertsService: AlertsServicing
     private let familyService: FamilyServicing
@@ -20,10 +23,13 @@ final class AppContainer {
         session: SessionStore,
         speech: SpeechSynthesizing,
         ambulance: AmbulanceTracker,
+        locationProvider: LocationProviding,
+        dictation: Dictating,
         authService: AuthServicing = MockAuthService(),
         medicalProfileService: MedicalProfileServicing,
         medicalProfileCache: MedicalProfileCache = MedicalProfileCache(),
         emergencyReportService: EmergencyReportServicing = MockEmergencyReportService(),
+        reportExtractor: ReportExtracting? = nil,
         firstAidAssistant: FirstAidAssisting = KeywordFirstAidAssistant(),
         alertsService: AlertsServicing = MockAlertsService(),
         familyService: FamilyServicing = MockFamilyService(),
@@ -32,10 +38,13 @@ final class AppContainer {
         self.session = session
         self.speech = speech
         self.ambulance = ambulance
+        self.locationProvider = locationProvider
+        self.dictation = dictation
         self.authService = authService
         self.medicalProfileService = medicalProfileService
         self.medicalProfileCache = medicalProfileCache
         self.emergencyReportService = emergencyReportService
+        self.reportExtractor = reportExtractor ?? RuleBasedReportExtractor()
         self.firstAidAssistant = firstAidAssistant
         self.alertsService = alertsService
         self.familyService = familyService
@@ -48,12 +57,19 @@ final class AppContainer {
         ambulance: AmbulanceTracker(),
         medicalProfileService: MedicalProfileAPIService(),
         lessonsService: LessonsAPIService()
+        locationProvider: CoreLocationService(),
+        dictation: SpeechDictation(),
+        medicalProfileService: MedicalProfileAPIService(),
+        emergencyReportService: EmergencyReportAPIService(),
+        reportExtractor: FallbackReportExtractor()
     )
 
     static let preview = AppContainer(
         session: SessionStore(defaults: UserDefaults(suiteName: "preview") ?? .standard),
         speech: SilentSpeech(),
         ambulance: AmbulanceTracker(),
+        locationProvider: FixedLocationProvider(),
+        dictation: SilentDictation(),
         medicalProfileService: MockMedicalProfileService(),
         medicalProfileCache: MedicalProfileCache(directory: FileManager.default.temporaryDirectory)
     )
@@ -68,8 +84,24 @@ final class AppContainer {
         MedicalProfileViewModel(service: medicalProfileService, cache: medicalProfileCache)
     }
 
-    func makeEmergencyReportViewModel(report: EmergencyReport = EmergencyReport(), isSent: Bool = false) -> EmergencyReportViewModel {
-        EmergencyReportViewModel(report: report, isSent: isSent, service: emergencyReportService)
+    func makeEmergencyReportViewModel(report: EmergencyReport = EmergencyReport(), shareURL: String? = nil) -> EmergencyReportViewModel {
+        let cache = medicalProfileCache
+        return EmergencyReportViewModel(
+            report: report,
+            shareURL: shareURL,
+            service: emergencyReportService,
+            extractor: reportExtractor,
+            locationProvider: locationProvider,
+            dictation: dictation,
+            medicalSummary: { cache.load()?.reportSummary }
+        )
+    }
+
+    // Report filled from the sample description, for the screenshot demo modes
+    func demoReport() -> EmergencyReport {
+        var report = EmergencyReport()
+        report.description = EmergencyReport.demoDescription
+        return report.merging(RuleBasedReportExtractor().fields(from: EmergencyReport.demoDescription))
     }
 
     func makeFirstAidViewModel() -> FirstAidViewModel {

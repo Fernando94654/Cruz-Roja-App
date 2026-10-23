@@ -23,6 +23,17 @@ uvicorn app.main:app --reload
 
 **Physical iPhone:** the simulator reaches `127.0.0.1`, a device doesn't. Run `uvicorn app.main:app --host 0.0.0.0` and set `APIConfig.baseURL` in the app to your Mac's LAN IP.
 
+## Supabase
+
+The backend uses Supabase only as its Postgres database; the schema still comes from Alembic.
+
+1. In Supabase: **Project → Connect → Session pooler**, copy the connection string.
+2. In `.env`, set `DATABASE_URL` to it, changing `postgresql://` to `postgresql+psycopg://` and adding `?sslmode=require`. URL-encode special characters in the password (`@` → `%40`).
+3. `alembic upgrade head` creates the extensions, tables and Row Level Security.
+4. Optional: `python scripts/seed.py` for demo data (wipes existing data).
+
+Every table has Row Level Security enabled with no policies, so the Data API (publishable key) can't read or write them; the backend connects as the table owner and isn't affected. New tables need `ALTER TABLE ... ENABLE ROW LEVEL SECURITY` in their migration (`tests/test_security.py` fails otherwise).
+
 ## Tests
 
 ```bash
@@ -52,6 +63,7 @@ Migration `0005` adds a nullable publisher and an ordered PostgreSQL text array 
 **Do not run `scripts/seed.py` against shared Supabase:** it truncates shared tables. Before upgrading an existing database, check its Alembic revision and apply only pending migrations. The Supabase database was at `0004` before this change, so only `0005` was applied there.
 
 The app loads YouTube's embed URL directly in `WKWebView`, passing its installed bundle identifier in the HTTPS `Referer` header as [YouTube requires](https://developers.google.com/youtube/terms/required-minimum-functionality). It uses YouTube controls, inline playback, and no autoplay. WebKit's native playback-state query is checked while the lesson is visible so speech stops when a video begins. A validated external YouTube link remains available if embedding fails. Leaving the lesson unloads the player and stops speech; backgrounding pauses playback. Emergency video loading never blocks the existing text/voice guidance.
+Tests never touch Supabase: they create a throwaway database next to `TEST_DATABASE_URL` (the local docker Postgres), run the migrations and roll back every test.
 
 ## Structure
 
@@ -98,6 +110,11 @@ tests/
   "updated_at": "2026-10-21T18:14:07Z"
 }
 ```
+
+| POST | `/emergency-reports` | Stores a sent emergency report and returns `{id, share_url}` | 201, 422 |
+| GET | `/r/{token}` | Public HTML page for the operator: summary, map and details | 200, 404 |
+
+`share_url` uses `PUBLIC_BASE_URL` from `.env`; set it to an address the operator's phone can reach (e.g. `http://<LAN IP>:8000` and run uvicorn with `--host 0.0.0.0`).
 
 Validation: `full_name` required; `blood_type` is one of `A+ A- B+ B- AB+ AB- O+ O- unknown`; `date_of_birth` can't be in the future; phones must have 10 digits (only digits are stored); at most 20 items per list and 5 contacts; lists drop blanks and duplicates.
 

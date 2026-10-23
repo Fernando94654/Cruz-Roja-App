@@ -43,6 +43,10 @@ class EmergencyReport(Base):
     skin: Mapped[str | None] = mapped_column(String(60))
     transcript: Mapped[str | None] = mapped_column(Text)
     ai_summary: Mapped[str | None] = mapped_column(Text)
+    # Profile summary sent by the app, shown to the operator
+    medical_summary: Mapped[str | None] = mapped_column(Text)
+    # Random token for the public operator link
+    share_token: Mapped[str | None] = mapped_column(String(32), unique=True)
     location = mapped_column(point())
     address: Mapped[str | None] = mapped_column(String(255))
     status: Mapped[ReportStatus] = mapped_column(
