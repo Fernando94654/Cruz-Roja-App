@@ -7,6 +7,7 @@ final class AlertsViewModel {
     private(set) var officialAlerts: [OfficialAlert] = []
     private(set) var reports: [CommunityReport] = []
     var errorMessage: String?
+    var selectedCategory: CommunityReportCategory?
 
     private let service: AlertsServicing
 
@@ -15,7 +16,12 @@ final class AlertsViewModel {
     }
 
     var activeReports: [CommunityReport] {
-        reports.filter { $0.expiresAt > Date() }
+        reports.filter { $0.expiresAt > Date() && $0.flags < CommunityReport.flagThreshold }
+    }
+
+    var filteredReports: [CommunityReport] {
+        guard let selectedCategory else { return activeReports }
+        return activeReports.filter { $0.category == selectedCategory }
     }
 
     func load() async {
@@ -38,6 +44,21 @@ final class AlertsViewModel {
             if let j = reports.firstIndex(where: { $0.id == report.id }) {
                 reports[j].confirmations -= 1
                 reports[j].confirmedByMe = false
+            }
+            errorMessage = error.localizedDescription
+        }
+    }
+
+    func flagAsFalse(_ report: CommunityReport) async {
+        guard let i = reports.firstIndex(where: { $0.id == report.id }), !reports[i].flaggedByMe else { return }
+        reports[i].flags += 1
+        reports[i].flaggedByMe = true
+        do {
+            try await service.flag(reportID: report.id)
+        } catch {
+            if let j = reports.firstIndex(where: { $0.id == report.id }) {
+                reports[j].flags -= 1
+                reports[j].flaggedByMe = false
             }
             errorMessage = error.localizedDescription
         }
