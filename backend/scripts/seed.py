@@ -12,6 +12,8 @@ from app.models import (
     Circle,
     CircleMember,
     CommunityReport,
+    DependentContact,
+    DependentProfile,
     EmergencyContact,
     Lesson,
     MedicalProfile,
@@ -58,6 +60,21 @@ def main():
             medications=encrypt_list(["Salbutamol"]),
         ))
         s.add(EmergencyContact(user_id=me.id, name="Ana López", relationship="Hija", phone="8112345678"))
+
+        # Someone the demo user looks after who doesn't use the app
+        grandma = DependentProfile(
+            owner_id=me.id,
+            relationship="Abuela",
+            full_name="Rosa Martínez",
+            date_of_birth=date(1945, 7, 2),
+            blood_type=BloodType.a_pos,
+            allergies=encrypt_list(["Sulfas"]),
+            conditions=encrypt_list(["Diabetes tipo 2", "Hipertensión"]),
+            medications=encrypt_list(["Metformina", "Losartán"]),
+        )
+        s.add(grandma)
+        s.flush()
+        s.add(DependentContact(dependent_id=grandma.id, name="Luis Martínez", relationship="Hijo", phone="8123456789"))
 
         circle = Circle(name="Family", created_by=me.id)
         s.add(circle)

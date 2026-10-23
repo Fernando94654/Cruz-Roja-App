@@ -34,8 +34,16 @@ struct APIClient: Sendable {
     }
 
     func put<Body: Encodable, Response: Decodable>(_ path: String, body: Body, as type: Response.Type = Response.self) async throws -> Response {
+        try await sendJSON(path, method: "PUT", body: body)
+    }
+
+    func post<Body: Encodable, Response: Decodable>(_ path: String, body: Body, as type: Response.Type = Response.self) async throws -> Response {
+        try await sendJSON(path, method: "POST", body: body)
+    }
+
+    private func sendJSON<Body: Encodable, Response: Decodable>(_ path: String, method: String, body: Body) async throws -> Response {
         var request = URLRequest(url: baseURL.appending(path: path), timeoutInterval: APIConfig.timeout)
-        request.httpMethod = "PUT"
+        request.httpMethod = method
         request.setValue("application/json", forHTTPHeaderField: "Content-Type")
         request.httpBody = try JSONEncoder().encode(body)
         let (data, response) = try await send(request)
@@ -82,5 +90,13 @@ struct APIClient: Sendable {
             return message.replacingOccurrences(of: "Value error, ", with: "")
         }
         return nil
+    }
+
+    // DELETE without a response body (204)
+    func delete(_ path: String) async throws {
+        var request = URLRequest(url: baseURL.appending(path: path), timeoutInterval: APIConfig.timeout)
+        request.httpMethod = "DELETE"
+        let (data, response) = try await send(request)
+        try verify(response, data)
     }
 }

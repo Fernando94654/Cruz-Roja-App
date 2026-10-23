@@ -89,4 +89,33 @@ tests/
 
 Validation: `full_name` required; `blood_type` is one of `A+ A- B+ B- AB+ AB- O+ O- unknown`; `date_of_birth` can't be in the future; phones must have 10 digits (only digits are stored); at most 20 items per list and 5 contacts; lists drop blanks and duplicates.
 
+### Dependent profiles
+
+Medical profiles of people the user looks after who don't use the app (parents, children). Same fields as the user's own profile plus `relationship`.
+
+| Method | Path | Description | Responses |
+|---|---|---|---|
+| GET | `/users/{user_id}/dependents` | Lists the user's dependents | 200, 404 |
+| POST | `/users/{user_id}/dependents` | Adds a dependent | 201, 404, 409 (more than 10), 422 |
+| GET | `/users/{user_id}/dependents/{dependent_id}` | Returns one dependent | 200, 404 |
+| PUT | `/users/{user_id}/dependents/{dependent_id}` | Replaces a dependent | 200, 404, 422 |
+| DELETE | `/users/{user_id}/dependents/{dependent_id}` | Removes a dependent and its contacts | 204, 404 |
+
+```json
+{
+  "id": "6f1c…",
+  "relationship": "Abuela",
+  "full_name": "Rosa Martínez",
+  "date_of_birth": "1945-07-02",
+  "blood_type": "A+",
+  "allergies": ["Sulfas"],
+  "conditions": ["Diabetes tipo 2", "Hipertensión"],
+  "medications": ["Metformina", "Losartán"],
+  "contacts": [{ "name": "Luis Martínez", "relationship": "Hijo", "phone": "8123456789" }],
+  "updated_at": "2026-10-22T21:40:12Z"
+}
+```
+
+A dependent that belongs to another user answers 404.
+
 Allergies, conditions and medications are stored encrypted. The demo user id matches `APIConfig.demoUserID` in the iOS app.
