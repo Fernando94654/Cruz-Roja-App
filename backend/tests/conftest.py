@@ -8,8 +8,8 @@ from sqlalchemy.engine import make_url
 load_dotenv(os.path.join(os.path.dirname(__file__), "..", "..", ".env"))
 os.environ.setdefault("MEDICAL_DATA_KEY", Fernet.generate_key().decode())
 
-# Tests run against a separate database in the same Postgres container
-_main_url = make_url(os.environ["DATABASE_URL"])
+# Tests create a throwaway database next to TEST_DATABASE_URL (local Postgres), never on Supabase
+_main_url = make_url(os.environ.get("TEST_DATABASE_URL") or os.environ["DATABASE_URL"])
 _test_url = _main_url.set(database=f"{_main_url.database}_test")
 os.environ["DATABASE_URL"] = _test_url.render_as_string(hide_password=False)
 

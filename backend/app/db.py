@@ -21,5 +21,6 @@ class Base(DeclarativeBase):
     metadata = MetaData(naming_convention=NAMING_CONVENTION)
 
 
-engine = create_engine(os.environ["DATABASE_URL"])
+# pre_ping drops connections the Supabase pooler closed while idle
+engine = create_engine(os.environ["DATABASE_URL"], pool_pre_ping=True)
 SessionLocal = sessionmaker(engine, expire_on_commit=False)
