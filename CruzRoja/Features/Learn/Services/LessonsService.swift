@@ -5,7 +5,20 @@ protocol LessonsServicing: Sendable {
 }
 
 struct MockLessonsService: LessonsServicing {
+    var lessons: [Lesson] = []
+
     func fetchLessons() async throws -> [Lesson] {
-        Lesson.samples
+        lessons
+    }
+}
+
+struct LessonsAPIService: LessonsServicing {
+    var client = APIClient()
+
+    func fetchLessons() async throws -> [Lesson] {
+        guard let lessons = try await client.get("lessons", as: [Lesson].self) else {
+            throw APIError.invalidResponse
+        }
+        return lessons
     }
 }

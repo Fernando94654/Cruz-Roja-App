@@ -2,6 +2,10 @@ import SwiftUI
 
 struct LessonView: View {
     @State private var viewModel: LessonViewModel
+    @State private var player = YouTubePlayerController()
+    @State private var isVisible = false
+    @State private var playerRevision = 0
+    @Environment(\.scenePhase) private var scenePhase
 
     init(viewModel: LessonViewModel) {
         _viewModel = State(initialValue: viewModel)
@@ -12,25 +16,45 @@ struct LessonView: View {
     var body: some View {
         ScrollView {
             VStack(alignment: .leading, spacing: 16) {
-                // Placeholder player until lesson videos exist
-                LessonThumbnail()
-                    .aspectRatio(16/9, contentMode: .fit)
-
-                VStack(spacing: 4) {
-                    Slider(value: $viewModel.playback)
-                        .tint(Color.brandRed)
-                    HStack {
-                        Text("0:00")
-                        Spacer()
-                        Text(lesson.duration)
+                if let video = lesson.video {
+                    if isVisible {
+                        YouTubePlayer(video: video, controller: player)
+                            .id(playerRevision)
+                            .frame(height: 240)
+                            .task(id: playerRevision) {
+                                await player.monitorPlayback(onPlayback: viewModel.stop)
+                            }
+                            .task(id: playerRevision) {
+                                try? await Task.sleep(for: .seconds(20))
+                                guard !Task.isCancelled, player.isLoading else { return }
+                                player.isLoading = false
+                                player.isUnavailable = true
+                            }
                     }
-                    .font(.caption.monospacedDigit())
-                    .foregroundStyle(.secondary)
+                    if player.isLoading { ProgressView("Cargando video…") }
+                    if player.isUnavailable {
+                        Text("No se pudo cargar el reproductor. Puedes reintentar o abrir el video en YouTube.")
+                            .font(.subheadline).foregroundStyle(.secondary)
+                        Button("Reintentar video") {
+                            player.stop()
+                            player = YouTubePlayerController()
+                            playerRevision += 1
+                        }
+                    }
+                    Link("Abrir en YouTube", destination: video.url)
+                        .simultaneousGesture(TapGesture().onEnded {
+                            viewModel.stop()
+                            player.pause()
+                        })
+                } else {
+                    Label("Video no disponible", systemImage: "video.slash")
+                        .foregroundStyle(.secondary)
                 }
 
                 Text(lesson.title).font(.brand(28))
-                Text(lesson.summary)
-                    .foregroundStyle(.secondary)
+                if let summary = lesson.summary {
+                    Text(summary).foregroundStyle(.secondary)
+                }
 
                 ForEach(Array(lesson.steps.enumerated()), id: \.offset) { i, step in
                     HStack(alignment: .top, spacing: 12) {
@@ -45,6 +69,7 @@ struct LessonView: View {
                 }
 
                 Button {
+                    player.pause()
                     viewModel.toggleSpeech()
                 } label: {
                     Label(viewModel.isSpeaking ? "Detener" : "Escuchar lección",
@@ -55,16 +80,29 @@ struct LessonView: View {
 
                 Divider()
 
-                Label("Lección certificada por instructores de Cruz Roja", systemImage: "checkmark.seal")
-                    .font(.subheadline)
+                if let publisher = lesson.publisher {
+                    Label("Video publicado por \(publisher)", systemImage: "play.rectangle")
+                        .font(.subheadline)
+                }
             }
             .padding()
         }
         .navigationBarTitleDisplayMode(.inline)
-        .onDisappear { viewModel.stop() }
+        .onAppear {
+            viewModel.stop()
+            player = YouTubePlayerController()
+            isVisible = true
+        }
+        .onDisappear {
+            viewModel.stop()
+            player.stop()
+            isVisible = false
+        }
+        .onChange(of: scenePhase) {
+            if scenePhase != .active {
+                player.pause()
+                viewModel.stop()
+            }
+        }
     }
-}
-
-#Preview {
-    NavigationStack { LessonView(viewModel: AppContainer.preview.makeLessonViewModel(lesson: Lesson.samples[0])) }
 }

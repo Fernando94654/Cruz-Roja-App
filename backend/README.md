@@ -26,10 +26,32 @@ uvicorn app.main:app --reload
 ## Tests
 
 ```bash
-pytest
+# Explicit, separate LOCAL database; credentials here are for your local test container only.
+TEST_DATABASE_URL=postgresql+psycopg://USER:PASSWORD@127.0.0.1:5432/enlace_vital_test .venv/bin/pytest
 ```
 
-Tests create a separate `enlace_vital_test` database in the same container, run the migrations and roll back every test.
+Tests require `TEST_DATABASE_URL`: a loopback PostgreSQL host, a database name ending in `_test`, and no query overrides. They never derive a target from `.env` or the shared Supabase URL. The fixture refuses to overwrite an existing database, creates its own database, runs the local migrations, rolls back each test, and drops only the database it created. The database role needs local `CREATEDB` privileges.
+
+From the repository root, run the Swift behavior checks with `bash tests/swift/run.sh` (Xcode command-line tools required).
+
+## Curated YouTube lessons
+
+`GET /lessons` returns the database records ordered by `position`, then `id`, with nullable `guide_id`, `description`, `video_url`, `publisher`, and `duration_seconds`, plus ordered `steps`. Unknown UUIDs get `guide_id: null`. An empty catalog returns `[]`; database failures return a generic 503. The app decodes the UUID and lesson content directly, without generating a replacement or falling back to sample lessons. The emergency assistant's guide text remains local for this version.
+
+The four reviewed UUIDs and expected original values are in `app/lesson_catalog.py`. To update only those records:
+
+```bash
+# From backend, using the DATABASE_URL configured for the app:
+.venv/bin/alembic upgrade 0005                           # add publisher and ordered steps after revision 0004
+.venv/bin/python -m scripts.update_lesson_videos          # validate, then roll back
+.venv/bin/python -m scripts.update_lesson_videos --apply  # commit the scoped update
+```
+
+Migration `0005` adds a nullable publisher and an ordered PostgreSQL text array for steps. The two earlier migration files restored in this checkout are copied unchanged from `origin/main`. The updater locks the four records in UUID order and checks every previous value before changing any record. A missing record or unexpected edit aborts the transaction. Already-updated records are skipped, so a second run updates zero rows. IDs and positions are preserved; unverified sample durations are cleared. New lessons can use any publisher and ordered step list; these values are served from the database.
+
+**Do not run `scripts/seed.py` against shared Supabase:** it truncates shared tables. Before upgrading an existing database, check its Alembic revision and apply only pending migrations. The Supabase database was at `0004` before this change, so only `0005` was applied there.
+
+The app loads YouTube's embed URL directly in `WKWebView`, passing its installed bundle identifier in the HTTPS `Referer` header as [YouTube requires](https://developers.google.com/youtube/terms/required-minimum-functionality). It uses YouTube controls, inline playback, and no autoplay. WebKit's native playback-state query is checked while the lesson is visible so speech stops when a video begins. A validated external YouTube link remains available if embedding fails. Leaving the lesson unloads the player and stops speech; backgrounding pauses playback. Emergency video loading never blocks the existing text/voice guidance.
 
 ## Structure
 
@@ -61,6 +83,7 @@ tests/
 |---|---|---|---|
 | GET | `/users/{user_id}/medical-profile` | Returns the medical profile | 200, 404 |
 | PUT | `/users/{user_id}/medical-profile` | Creates or replaces the whole profile | 200, 404, 422 |
+| GET | `/lessons` | Ordered lessons with stable UUID and optional emergency guide ID | 200, 503 |
 
 ```json
 {

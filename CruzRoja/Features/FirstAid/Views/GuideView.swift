@@ -64,6 +64,10 @@ struct GuideView: View {
             }
             .tint(.black)
 
+            if viewModel.isLastStep {
+                RelatedLessonLink(guideID: viewModel.guide.id, lessons: viewModel.lessons, stopSpeech: viewModel.stop)
+            }
+
             Text("Basado en protocolos de Cruz Roja")
                 .font(.footnote)
                 .foregroundStyle(.secondary)
