@@ -1,15 +1,15 @@
 """emergency report sharing
 
-Revision ID: 0003
-Revises: 0002
+Revision ID: 0004
+Revises: 0003
 Create Date: 2026-10-21 14:39:36.104874
 """
 from alembic import op
 import sqlalchemy as sa
 
 
-revision = '0003'
-down_revision = '0002'
+revision = '0004'
+down_revision = '0003'
 branch_labels = None
 depends_on = None
 
