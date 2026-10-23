@@ -46,7 +46,9 @@ final class AppContainer {
         session: SessionStore(),
         speech: SpeechService(),
         ambulance: AmbulanceTracker(),
-        medicalProfileService: MedicalProfileAPIService()
+        authService: AuthAPIService(),
+        medicalProfileService: MedicalProfileAPIService(),
+        familyService: DemoMode.isActive("family") ? MockFamilyService() : FamilyAPIService()
     )
 
     static let preview = AppContainer(
@@ -67,8 +69,9 @@ final class AppContainer {
         MedicalProfileViewModel(service: medicalProfileService, cache: medicalProfileCache)
     }
 
-    func makeEmergencyReportViewModel(report: EmergencyReport = EmergencyReport(), isSent: Bool = false) -> EmergencyReportViewModel {
-        EmergencyReportViewModel(report: report, isSent: isSent, service: emergencyReportService)
+    func makeEmergencyReportViewModel(report: EmergencyReport = EmergencyReport(), location: EmergencyLocation = .current,
+                                      isSent: Bool = false) -> EmergencyReportViewModel {
+        EmergencyReportViewModel(report: report, location: location, isSent: isSent, service: emergencyReportService)
     }
 
     func makeFirstAidViewModel() -> FirstAidViewModel {

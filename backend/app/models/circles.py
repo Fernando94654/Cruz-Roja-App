@@ -45,6 +45,8 @@ class CircleMember(Base):
         Enum(CircleRole, name="circle_role"), default=CircleRole.member, server_default="member"
     )
     shares_location: Mapped[bool] = mapped_column(default=True, server_default="true")
+    # How the person who invited them calls them ("Mamá", "Abuelo"...)
+    relationship: Mapped[str | None] = mapped_column(String(40))
     joined_at: Mapped[datetime] = timestamp_now()
 
 
@@ -55,6 +57,8 @@ class CircleInvitation(Base):
     circle_id: Mapped[uuid.UUID] = mapped_column(ForeignKey("circles.id", ondelete="CASCADE"), index=True)
     invited_by: Mapped[uuid.UUID | None] = mapped_column(ForeignKey("users.id", ondelete="SET NULL"))
     contact: Mapped[str] = mapped_column(String(255))
+    name: Mapped[str] = mapped_column(String(120), server_default="")
+    relationship: Mapped[str | None] = mapped_column(String(40))
     token: Mapped[str] = mapped_column(String(64), unique=True)
     status: Mapped[InvitationStatus] = mapped_column(
         Enum(InvitationStatus, name="invitation_status"), default=InvitationStatus.pending, server_default="pending"
@@ -74,11 +78,15 @@ class UserLocation(Base):
 
 
 class WellbeingCheck(Base):
+    """A "¿Estás bien?" sent to user_id. Stays no_response until they answer."""
+
     __tablename__ = "wellbeing_checks"
 
     id: Mapped[uuid.UUID] = uuid_pk()
     user_id: Mapped[uuid.UUID] = mapped_column(ForeignKey("users.id", ondelete="CASCADE"), index=True)
+    requested_by: Mapped[uuid.UUID | None] = mapped_column(ForeignKey("users.id", ondelete="SET NULL"))
     alert_id: Mapped[uuid.UUID | None] = mapped_column(ForeignKey("official_alerts.id", ondelete="SET NULL"))
     report_id: Mapped[uuid.UUID | None] = mapped_column(ForeignKey("emergency_reports.id", ondelete="SET NULL"))
     status: Mapped[WellbeingStatus] = mapped_column(Enum(WellbeingStatus, name="wellbeing_status"))
     created_at: Mapped[datetime] = timestamp_now()
+    answered_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))

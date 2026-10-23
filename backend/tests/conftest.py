@@ -7,6 +7,7 @@ from sqlalchemy.engine import make_url
 
 load_dotenv(os.path.join(os.path.dirname(__file__), "..", "..", ".env"))
 os.environ.setdefault("MEDICAL_DATA_KEY", Fernet.generate_key().decode())
+os.environ.setdefault("JWT_SECRET", "test-secret-that-is-long-enough-for-hs256")
 
 # Tests run against a separate database in the same Postgres container
 _main_url = make_url(os.environ["DATABASE_URL"])

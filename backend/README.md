@@ -6,7 +6,7 @@ FastAPI + SQLAlchemy + Alembic on PostgreSQL 17 with PostGIS (Docker).
 
 ```bash
 # from the repo root
-cp .env.example .env            # set a password and generate MEDICAL_DATA_KEY
+cp .env.example .env            # set a password, generate MEDICAL_DATA_KEY and JWT_SECRET
 docker compose up -d
 
 cd backend
@@ -79,3 +79,22 @@ tests/
 Validation: `full_name` required; `blood_type` is one of `A+ A- B+ B- AB+ AB- O+ O- unknown`; `date_of_birth` can't be in the future; phones must have 10 digits (only digits are stored); at most 20 items per list and 5 contacts; lists drop blanks and duplicates.
 
 Allergies, conditions and medications are stored encrypted. The demo user id matches `APIConfig.demoUserID` in the iOS app.
+
+### Sign in
+
+`POST /auth/login` with `{"email", "password"}` returns `access_token`. Send it as `Authorization: Bearer <token>`; the family endpoints take the user from the token, never from the URL. Seed user: `user@example.com` / `demo1234`.
+
+### Family
+
+All return the whole family (`members`, `sent_invitations`, `received_invitations`, `wellbeing_request`, `shares_location`), 401 without a valid token.
+
+| Method | Path | Description |
+|---|---|---|
+| GET | `/family` | My family |
+| POST | `/family/invitations` | Invite `{name, contact, relationship}`, contact is a 10 digit phone or an email (201, 409, 422) |
+| DELETE | `/family/invitations/{id}` | Cancel an invitation I sent |
+| POST | `/family/invitations/{id}/accept` · `/decline` | Answer an invitation I received |
+| POST | `/family/members/{id}/wellbeing-check` | Ask "¿Estás bien?", one pending question per person |
+| POST | `/family/wellbeing-answer` | Answer `{status: ok \| need_help}`, reaches everyone who asked |
+| DELETE | `/family/members/{id}` | Remove someone, only the circle admin (403) |
+| PUT | `/family/sharing` | `{shares_location}` |
