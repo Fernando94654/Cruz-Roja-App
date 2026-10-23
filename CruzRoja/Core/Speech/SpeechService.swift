@@ -16,7 +16,6 @@ final class SpeechService: NSObject, SpeechSynthesizing, AVSpeechSynthesizerDele
         synthesizer.delegate = self
         // Looking up the voice blocks the main thread, so it runs detached
         Task.detached(priority: .userInitiated) {
-            try? AVAudioSession.sharedInstance().setCategory(.playback, mode: .spokenAudio, options: [.duckOthers])
             self.voice = AVSpeechSynthesisVoice(language: "es-MX") ?? AVSpeechSynthesisVoice(language: "es-ES")
         }
     }
@@ -24,7 +23,9 @@ final class SpeechService: NSObject, SpeechSynthesizing, AVSpeechSynthesizerDele
     func speak(_ text: String) {
         guard !isMuted else { return }
         stop()
-        try? AVAudioSession.sharedInstance().setActive(true)
+        let session = AVAudioSession.sharedInstance()
+        try? session.setCategory(.playback, mode: .spokenAudio, options: [.duckOthers])
+        try? session.setActive(true)
         let utterance = AVSpeechUtterance(string: text)
         utterance.voice = voice
         synthesizer.speak(utterance)

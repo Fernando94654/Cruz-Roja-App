@@ -15,7 +15,7 @@ struct LearnView: View {
             List(viewModel.lessons) { lesson in
                 NavigationLink(value: lesson) {
                     HStack(spacing: 14) {
-                        LessonThumbnail()
+                        LessonThumbnail(lesson: lesson)
                             .frame(width: 110, height: 66)
                         VStack(alignment: .leading, spacing: 4) {
                             Text(lesson.title).font(.headline)
@@ -57,15 +57,35 @@ struct LearnView: View {
 }
 
 struct LessonThumbnail: View {
+    let lesson: Lesson
+
+    private var icon: String {
+        guard let guideID = lesson.guideID else { return "play.rectangle.fill" }
+        return FirstAidGuide.catalog.first { $0.id == guideID }?.icon ?? "play.rectangle.fill"
+    }
+
     var body: some View {
-        RoundedRectangle(cornerRadius: 10)
-            .fill(.gray.opacity(0.25))
-            .overlay {
-                Image(systemName: "play.fill")
+        GeometryReader { geometry in
+            ZStack {
+                RoundedRectangle(cornerRadius: 10)
+                    .fill(LinearGradient(colors: [Color.brandRed, Color.brandRed.opacity(0.7)],
+                                         startPoint: .topLeading, endPoint: .bottomTrailing))
+
+                Image(systemName: icon)
+                    .font(.system(size: min(geometry.size.height * 0.48, 76), weight: .medium))
                     .foregroundStyle(.white)
-                    .padding(10)
-                    .background(.black.opacity(0.35), in: Circle())
+
+                Image(systemName: "play.fill")
+                    .font(.system(size: min(geometry.size.height * 0.16, 22), weight: .bold))
+                    .foregroundStyle(Color.brandRed)
+                    .frame(width: min(geometry.size.height * 0.3, 42),
+                           height: min(geometry.size.height * 0.3, 42))
+                    .background(.white, in: Circle())
+                    .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .bottomTrailing)
+                    .padding(geometry.size.height * 0.08)
             }
+        }
+        .accessibilityHidden(true)
     }
 }
 

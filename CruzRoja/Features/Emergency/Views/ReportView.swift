@@ -23,16 +23,21 @@ struct ReportView: View {
                 }
 
                 Section {
-                    TextField("Ej. Mi abuela se cayó en la casa y está confundida", text: $viewModel.report.description, axis: .vertical)
+                    TextField(viewModel.isPreparingDictation || isListening ? "" : "Ej. Mi abuela se cayó en la casa y está confundida",
+                              text: $viewModel.report.description, axis: .vertical)
                         .lineLimit(3...6)
 
                     Button {
                         Task { await viewModel.toggleDictation() }
                     } label: {
-                        Label(isListening ? "Detener dictado" : "Dictar", systemImage: isListening ? "stop.fill" : "mic.fill")
-                            .foregroundStyle(isListening ? Color.brandRed : Color.primary)
+                        if viewModel.isPreparingDictation {
+                            Label("Preparando micrófono…", systemImage: "mic.fill")
+                        } else {
+                            Label(isListening ? "Detener dictado" : "Dictar", systemImage: isListening ? "stop.fill" : "mic.fill")
+                                .foregroundStyle(isListening ? Color.brandRed : Color.primary)
+                        }
                     }
-                    .disabled(viewModel.isFilling)
+                    .disabled(viewModel.isFilling || viewModel.isPreparingDictation)
 
                     Button {
                         Task { await viewModel.fillFromDescription() }
@@ -105,7 +110,7 @@ struct ReportView: View {
             }
             .task { await viewModel.locate() }
             .task { viewModel.prewarmAI() }
-            .onDisappear { if isListening { viewModel.dictation.stop() } }
+            .onDisappear { viewModel.dictation.stop() }
             .alert("Aviso", isPresented: hasError) {
                 Button("Aceptar", role: .cancel) {}
             } message: {
