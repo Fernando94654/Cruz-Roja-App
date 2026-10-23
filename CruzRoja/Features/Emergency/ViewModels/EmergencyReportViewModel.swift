@@ -10,6 +10,7 @@ final class EmergencyReportViewModel {
     }
     private(set) var location: EmergencyLocation?
     private(set) var isFilling = false
+    private(set) var isPreparingDictation = false
     // Tells the user what "Llenar con IA" did
     private(set) var fillMessage: String?
     private(set) var aiSummary: String?
@@ -100,18 +101,36 @@ final class EmergencyReportViewModel {
     }
 
     func toggleDictation() async {
+        guard !isPreparingDictation else { return }
         if dictation.isListening {
             dictation.stop()
+            if report.description.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty {
+                report.description = textBeforeDictation
+                textBeforeDictation = ""
+                return
+            }
+            textBeforeDictation = ""
             await fillFromDescription()
             return
         }
         textBeforeDictation = report.description
+        report.description = ""
+        fillMessage = nil
+        isPreparingDictation = true
+        defer { isPreparingDictation = false }
         do {
-            try await dictation.start { [weak self] text in
+            try await dictation.start(onText: { [weak self] text in
                 guard let self else { return }
-                report.description = [textBeforeDictation, text].filter { !$0.isEmpty }.joined(separator: " ")
-            }
+                report.description = text
+            }, onError: { [weak self] message in
+                guard let self else { return }
+                if report.description.isEmpty { report.description = textBeforeDictation }
+                errorMessage = message
+            })
+        } catch is CancellationError {
+            if report.description.isEmpty { report.description = textBeforeDictation }
         } catch {
+            if report.description.isEmpty { report.description = textBeforeDictation }
             errorMessage = error.localizedDescription
         }
     }

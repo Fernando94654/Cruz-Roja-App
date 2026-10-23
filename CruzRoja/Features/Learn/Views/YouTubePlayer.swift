@@ -38,6 +38,7 @@ final class YouTubePlayerController: LessonVideoPlayback {
 struct YouTubePlayer: UIViewRepresentable {
     let video: YouTubeVideo
     let controller: YouTubePlayerController
+    let autoplay: Bool
     let onLoad: @MainActor () -> Void
     let onFailure: @MainActor () -> Void
 
@@ -48,7 +49,7 @@ struct YouTubePlayer: UIViewRepresentable {
     func makeUIView(context: Context) -> WKWebView {
         let configuration = WKWebViewConfiguration()
         configuration.allowsInlineMediaPlayback = true
-        configuration.mediaTypesRequiringUserActionForPlayback = .all
+        configuration.mediaTypesRequiringUserActionForPlayback = autoplay ? [] : .all
         let webView = WKWebView(frame: .zero, configuration: configuration)
         webView.navigationDelegate = context.coordinator
         webView.scrollView.isScrollEnabled = false
@@ -63,7 +64,7 @@ struct YouTubePlayer: UIViewRepresentable {
         var embed = URLComponents(string: "https://www.youtube.com/embed/\(video.id)")!
         embed.queryItems = [
             URLQueryItem(name: "playsinline", value: "1"),
-            URLQueryItem(name: "autoplay", value: "0"),
+            URLQueryItem(name: "autoplay", value: autoplay ? "1" : "0"),
             URLQueryItem(name: "controls", value: "1"),
             URLQueryItem(name: "hl", value: "es"),
             URLQueryItem(name: "cc_lang_pref", value: "es"),

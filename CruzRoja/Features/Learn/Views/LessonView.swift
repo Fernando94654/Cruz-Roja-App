@@ -4,10 +4,12 @@ struct LessonView: View {
     @State private var viewModel: LessonViewModel
     @State private var playerViewModel: LessonPlayerViewModel<YouTubePlayerController>
     @Environment(\.scenePhase) private var scenePhase
+    let autoplay: Bool
 
-    init(viewModel: LessonViewModel) {
+    init(viewModel: LessonViewModel, autoplay: Bool = false) {
         _viewModel = State(initialValue: viewModel)
         _playerViewModel = State(initialValue: LessonPlayerViewModel(lesson: viewModel, makePlayer: YouTubePlayerController.init))
+        self.autoplay = autoplay
     }
 
     private var lesson: Lesson { viewModel.lesson }
@@ -18,11 +20,19 @@ struct LessonView: View {
             VStack(alignment: .leading, spacing: 16) {
                 if let video = lesson.video {
                     if playerViewModel.isVisible {
-                        YouTubePlayer(video: video, controller: playerViewModel.player,
-                                      onLoad: { playerViewModel.didLoad(revision: revision) },
-                                      onFailure: { playerViewModel.didFail(revision: revision) })
-                            .id(revision)
-                            .frame(height: 240)
+                        ZStack {
+                            YouTubePlayer(video: video, controller: playerViewModel.player, autoplay: autoplay,
+                                          onLoad: { playerViewModel.didLoad(revision: revision) },
+                                          onFailure: { playerViewModel.didFail(revision: revision) })
+                                .id(revision)
+                                .allowsHitTesting(!playerViewModel.isLoading && !playerViewModel.isUnavailable)
+
+                            if playerViewModel.isLoading || playerViewModel.isUnavailable {
+                                LessonThumbnail(lesson: lesson)
+                                    .allowsHitTesting(false)
+                            }
+                        }
+                        .frame(height: 240)
                     }
                     if playerViewModel.isLoading { ProgressView("Cargando video…") }
                     if playerViewModel.isUnavailable {

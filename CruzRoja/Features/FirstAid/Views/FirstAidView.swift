@@ -64,13 +64,6 @@ struct FirstAidView: View {
             Text("Escribe o habla. El asistente busca en el material de Cruz Roja y te guía paso a paso por voz.")
                 .foregroundStyle(.secondary)
 
-            Label("RAG sobre manuales de Cruz Roja · demo", systemImage: "books.vertical.fill")
-                .font(.caption.weight(.semibold))
-                .foregroundStyle(Color.brandRed)
-                .padding(.horizontal, 10)
-                .padding(.vertical, 6)
-                .background(Color.brandRed.opacity(0.1), in: Capsule())
-
             ForEach(viewModel.suggestions, id: \.self) { suggestion in
                 Button {
                     send(suggestion)
@@ -178,29 +171,6 @@ struct AnswerCard: View {
             }
 
             Text(answer.text)
-
-            VStack(alignment: .leading, spacing: 6) {
-                Text("Fuentes consultadas")
-                    .font(.caption.weight(.semibold))
-                    .foregroundStyle(.secondary)
-                ForEach(answer.sources) { source in
-                    HStack(alignment: .top, spacing: 8) {
-                        Image(systemName: "doc.text.fill")
-                            .foregroundStyle(Color.brandRed)
-                        VStack(alignment: .leading, spacing: 2) {
-                            Text("\(source.document) · pág. \(source.page)")
-                                .font(.caption.weight(.semibold))
-                            Text("“\(source.excerpt)”")
-                                .font(.caption)
-                                .foregroundStyle(.secondary)
-                                .lineLimit(2)
-                        }
-                    }
-                }
-            }
-            .padding(10)
-            .frame(maxWidth: .infinity, alignment: .leading)
-            .background(.white, in: RoundedRectangle(cornerRadius: 10))
 
             HStack {
                 Button {
