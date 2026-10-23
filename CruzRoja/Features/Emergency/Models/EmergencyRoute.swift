@@ -5,5 +5,5 @@ enum EmergencyRoute: Hashable {
     case summary
     case firstAid
     case guide(FirstAidGuide)
-    case lesson(Lesson)
+    case lesson(Lesson, autoplay: Bool)
 }

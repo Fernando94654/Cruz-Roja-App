@@ -9,9 +9,32 @@ struct RelatedLessonLink: View {
     var body: some View {
         VStack(alignment: .leading, spacing: 8) {
             if let lesson = lessons.lessons.first(where: { $0.guideID == guideID }), lesson.video != nil {
-                NavigationLink(value: EmergencyRoute.lesson(lesson)) {
-                    Label("Ver video educativo", systemImage: "play.rectangle")
+                NavigationLink(value: EmergencyRoute.lesson(lesson, autoplay: true)) {
+                    VStack(alignment: .leading, spacing: 10) {
+                        LessonThumbnail(lesson: lesson)
+                            .frame(height: 130)
+                        HStack(spacing: 8) {
+                            Image(systemName: "play.circle.fill")
+                                .font(.title2)
+                                .foregroundStyle(Color.brandRed)
+                            VStack(alignment: .leading, spacing: 2) {
+                                Text("Reproducir video")
+                                    .font(.subheadline.weight(.semibold))
+                                Text(lesson.title)
+                                    .font(.caption)
+                                    .foregroundStyle(.secondary)
+                            }
+                            Spacer(minLength: 0)
+                            Image(systemName: "chevron.right")
+                                .font(.caption.weight(.semibold))
+                                .foregroundStyle(.secondary)
+                        }
+                    }
+                    .padding(10)
+                    .frame(maxWidth: .infinity, alignment: .leading)
+                    .background(.white, in: RoundedRectangle(cornerRadius: 12))
                 }
+                .buttonStyle(.plain)
                 .simultaneousGesture(TapGesture().onEnded { stopSpeech() })
             } else if lessons.isLoading || (!lessons.hasLoaded && lessons.errorMessage == nil) {
                 ProgressView("Buscando video educativo…")

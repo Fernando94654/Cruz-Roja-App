@@ -4,10 +4,12 @@ struct LessonView: View {
     @State private var viewModel: LessonViewModel
     @State private var playerViewModel: LessonPlayerViewModel<YouTubePlayerController>
     @Environment(\.scenePhase) private var scenePhase
+    let autoplay: Bool
 
-    init(viewModel: LessonViewModel) {
+    init(viewModel: LessonViewModel, autoplay: Bool = false) {
         _viewModel = State(initialValue: viewModel)
         _playerViewModel = State(initialValue: LessonPlayerViewModel(lesson: viewModel, makePlayer: YouTubePlayerController.init))
+        self.autoplay = autoplay
     }
 
     private var lesson: Lesson { viewModel.lesson }
@@ -19,7 +21,7 @@ struct LessonView: View {
                 if let video = lesson.video {
                     if playerViewModel.isVisible {
                         ZStack {
-                            YouTubePlayer(video: video, controller: playerViewModel.player,
+                            YouTubePlayer(video: video, controller: playerViewModel.player, autoplay: autoplay,
                                           onLoad: { playerViewModel.didLoad(revision: revision) },
                                           onFailure: { playerViewModel.didFail(revision: revision) })
                                 .id(revision)
