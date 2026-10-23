@@ -61,6 +61,7 @@ final class AppContainer {
         medicalProfileService: MedicalProfileAPIService(),
         emergencyReportService: EmergencyReportAPIService(),
         reportExtractor: FallbackReportExtractor(),
+        alertsService: DemoMode.isActive("alerts") ? MockAlertsService() : AlertsAPIService(locationProvider: CoreLocationService()),
         familyService: DemoMode.isActive("family") ? MockFamilyService() : FamilyAPIService(),
         lessonsService: LessonsAPIService()
     )

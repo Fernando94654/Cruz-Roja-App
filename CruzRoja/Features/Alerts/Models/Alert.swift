@@ -72,12 +72,29 @@ struct CommunityReport: Identifiable, Hashable, Sendable {
     var expiresAt: Date
     var flags = 0
     var flaggedByMe = false
+    var isMine = false
 
     static let confirmationThreshold = 3
     static let flagThreshold = 3
 
     var isConfirmed: Bool {
         confirmations >= Self.confirmationThreshold
+    }
+
+    mutating func setConfirmed(_ value: Bool) {
+        if value != confirmedByMe {
+            confirmations += value ? 1 : -1
+            confirmedByMe = value
+        }
+        if value { setFlagged(false) }
+    }
+
+    mutating func setFlagged(_ value: Bool) {
+        if value != flaggedByMe {
+            flags += value ? 1 : -1
+            flaggedByMe = value
+        }
+        if value { setConfirmed(false) }
     }
 }
 

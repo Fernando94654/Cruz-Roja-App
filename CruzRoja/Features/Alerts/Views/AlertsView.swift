@@ -27,12 +27,12 @@ struct AlertsView: View {
                         communityReportRow(report)
                             .swipeActions(edge: .trailing) {
                                 Button {
-                                    Task { await viewModel.flagAsFalse(report) }
+                                    Task { await viewModel.toggleFalseFlag(report) }
                                 } label: {
-                                    Label("Falso", systemImage: "flag.fill")
+                                    Label(report.flaggedByMe ? "Quitar" : "Falso",
+                                          systemImage: report.flaggedByMe ? "flag.slash.fill" : "flag.fill")
                                 }
-                                .tint(.orange)
-                                .disabled(report.flaggedByMe)
+                                .tint(report.flaggedByMe ? .gray : .orange)
                             }
                     }
                 }
@@ -124,12 +124,25 @@ struct AlertsView: View {
             Text("\(report.category.label) · confirmado por \(report.confirmations) vecinos · expira en \(report.expiresAt, style: .relative)")
                 .font(.subheadline)
                 .foregroundStyle(.secondary)
-            Button(report.confirmedByMe ? "Confirmado" : "Confirmar") {
-                Task { await viewModel.confirm(report) }
+            if report.flaggedByMe {
+                Label("Lo marcaste como falso · desliza para quitarlo", systemImage: "flag.fill")
+                    .font(.caption)
+                    .foregroundStyle(.orange)
             }
-            .buttonStyle(.bordered)
-            .tint(.primary)
-            .disabled(report.confirmedByMe)
+            if report.isMine {
+                Text("Tu reporte")
+                    .font(.caption)
+                    .foregroundStyle(.secondary)
+            } else {
+                Button {
+                    Task { await viewModel.toggleConfirmation(report) }
+                } label: {
+                    Label(report.confirmedByMe ? "Confirmaste" : "Confirmar",
+                          systemImage: report.confirmedByMe ? "checkmark.circle.fill" : "checkmark.circle")
+                }
+                .buttonStyle(.bordered)
+                .tint(report.confirmedByMe ? .green : .primary)
+            }
         }
         .padding(.vertical, 4)
     }
