@@ -69,10 +69,15 @@ final class AppContainer {
         session: SessionStore(defaults: UserDefaults(suiteName: "preview") ?? .standard),
         speech: SilentSpeech(),
         ambulance: AmbulanceTracker(),
-        locationProvider: FixedLocationProvider(),
+        locationProvider: FixedLocationProvider(location: CurrentLocation(
+            coordinate: Coordinate(latitude: 25.6516, longitude: -100.2895),
+            address: "Ubicación simulada, Monterrey, Nuevo León",
+            accuracyMeters: 100
+        )),
         dictation: SilentDictation(),
         medicalProfileService: MockMedicalProfileService(),
-        medicalProfileCache: MedicalProfileCache(directory: FileManager.default.temporaryDirectory)
+        medicalProfileCache: MedicalProfileCache(directory: FileManager.default.temporaryDirectory),
+        lessonsService: LessonsAPIService()
     )
 
     // MARK: - ViewModels
