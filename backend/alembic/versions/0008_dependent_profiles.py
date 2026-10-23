@@ -3,8 +3,8 @@
 Medical profiles for people the user looks after who don't use the app
 (parents, children), each with its own emergency contacts.
 
-Revision ID: 0005
-Revises: 0004
+Revision ID: 0008
+Revises: 0007
 Create Date: 2026-10-22 21:40:12
 """
 from alembic import op
@@ -12,8 +12,8 @@ import sqlalchemy as sa
 from sqlalchemy.dialects import postgresql
 
 
-revision = '0005'
-down_revision = '0004'
+revision = '0008'
+down_revision = '0007'
 branch_labels = None
 depends_on = None
 

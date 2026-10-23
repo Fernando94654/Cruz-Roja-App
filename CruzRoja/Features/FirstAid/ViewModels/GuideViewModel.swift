@@ -11,12 +11,15 @@ final class GuideViewModel {
     private(set) var beat = false
 
     let ambulance: AmbulanceTracker
+    let lessons: LearnViewModel
     private let speech: SpeechSynthesizing
+    private var isActive = true
 
-    init(guide: FirstAidGuide, speech: SpeechSynthesizing, ambulance: AmbulanceTracker) {
+    init(guide: FirstAidGuide, speech: SpeechSynthesizing, ambulance: AmbulanceTracker, lessonsService: LessonsServicing) {
         self.guide = guide
         self.speech = speech
         self.ambulance = ambulance
+        lessons = LearnViewModel(service: lessonsService)
     }
 
     var step: GuideStep { guide.steps[stepIndex] }
@@ -29,10 +32,12 @@ final class GuideViewModel {
     }
 
     func start() {
+        isActive = true
         ambulance.request()
     }
 
     func stop() {
+        isActive = false
         speech.stop()
     }
 
@@ -52,11 +57,12 @@ final class GuideViewModel {
 
     // Speaks the step and runs its timer; cancelled when the step changes
     func runStep() async {
+        guard isActive, !Task.isCancelled else { return }
         speech.speak("\(step.title). \(step.instruction)")
         secondsLeft = step.seconds
         while let left = secondsLeft, left > 0 {
             try? await Task.sleep(for: .seconds(1))
-            if Task.isCancelled { return }
+            if Task.isCancelled || !isActive { return }
             secondsLeft = left - 1
         }
         if secondsLeft == 0 { speech.speak("Tiempo cumplido.") }
@@ -66,12 +72,13 @@ final class GuideViewModel {
         guard let rate = step.rate else { return }
         while !Task.isCancelled {
             try? await Task.sleep(for: .seconds(60.0 / Double(rate)))
+            guard !Task.isCancelled, isActive else { return }
             beat.toggle()
         }
     }
 
     func announceArrivalIfNeeded() {
-        if ambulance.hasArrived {
+        if isActive && ambulance.hasArrived {
             speech.speak("La ambulancia llegó. Cuéntale a los paramédicos qué pasó y qué hiciste.")
         }
     }

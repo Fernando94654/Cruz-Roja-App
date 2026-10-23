@@ -34,24 +34,38 @@ struct APIClient: Sendable {
     }
 
     func put<Body: Encodable, Response: Decodable>(_ path: String, body: Body, as type: Response.Type = Response.self) async throws -> Response {
-        try await sendJSON(path, method: "PUT", body: body)
+        try await send("PUT", path, body: body)
     }
 
     func post<Body: Encodable, Response: Decodable>(_ path: String, body: Body, as type: Response.Type = Response.self) async throws -> Response {
-        try await sendJSON(path, method: "POST", body: body)
+        try await send("POST", path, body: body)
     }
 
-    private func sendJSON<Body: Encodable, Response: Decodable>(_ path: String, method: String, body: Body) async throws -> Response {
+    func post<Response: Decodable>(_ path: String, as type: Response.Type = Response.self) async throws -> Response {
+        try await send("POST", path, body: Optional<String>.none)
+    }
+
+    func delete<Response: Decodable>(_ path: String, as type: Response.Type = Response.self) async throws -> Response {
+        try await send("DELETE", path, body: Optional<String>.none)
+    }
+
+    private func send<Body: Encodable, Response: Decodable>(_ method: String, _ path: String, body: Body?) async throws -> Response {
         var request = URLRequest(url: baseURL.appending(path: path), timeoutInterval: APIConfig.timeout)
         request.httpMethod = method
-        request.setValue("application/json", forHTTPHeaderField: "Content-Type")
-        request.httpBody = try JSONEncoder().encode(body)
+        if let body {
+            request.setValue("application/json", forHTTPHeaderField: "Content-Type")
+            request.httpBody = try JSONEncoder().encode(body)
+        }
         let (data, response) = try await send(request)
         try verify(response, data)
         return try decode(data)
     }
 
     private func send(_ request: URLRequest) async throws -> (Data, HTTPURLResponse) {
+        var request = request
+        if let token = AuthToken.current {
+            request.setValue("Bearer \(token)", forHTTPHeaderField: "Authorization")
+        }
         do {
             let (data, response) = try await session.data(for: request)
             guard let http = response as? HTTPURLResponse else { throw APIError.invalidResponse }
@@ -74,7 +88,9 @@ struct APIClient: Sendable {
 
     private func decode<Response: Decodable>(_ data: Data) throws -> Response {
         do {
-            return try JSONDecoder().decode(Response.self, from: data)
+            let decoder = JSONDecoder()
+            decoder.dateDecodingStrategy = .iso8601
+            return try decoder.decode(Response.self, from: data)
         } catch {
             throw APIError.invalidResponse
         }

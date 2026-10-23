@@ -45,13 +45,4 @@ struct EmergencyLocation: Hashable, Sendable {
     let coordinate: Coordinate
     let address: String
     let accuracyMeters: Int
-    // True when it's the fixed fallback because location isn't available
-    var isFallback = false
-
-    static let fallback = EmergencyLocation(
-        coordinate: .monterrey,
-        address: "Av. Eugenio Garza Sada 2501 Sur, Monterrey, N.L.",
-        accuracyMeters: 5,
-        isFallback: true
-    )
 }

@@ -56,7 +56,7 @@ struct SummaryView: View {
                 row("Respiración", report.breathing)
                 row("Color de piel", report.skin)
                 row("Referencia", report.reference)
-                row("Ubicación", viewModel.location.address)
+                row("Ubicación", viewModel.location?.address ?? "Ubicación no disponible")
             } header: {
                 Text("Detalle del reporte")
             } footer: {
@@ -78,8 +78,13 @@ struct SummaryView: View {
                             .foregroundStyle(.white)
                             .frame(maxWidth: .infinity)
                     }
-                    .disabled(viewModel.isSending)
+                    .disabled(viewModel.isSending || viewModel.location == nil)
                     .listRowBackground(Color.brandRed)
+                    if viewModel.location == nil {
+                        Text("Vuelve al reporte y activa la ubicación del teléfono para poder enviarlo.")
+                            .font(.footnote)
+                            .foregroundStyle(Color.brandRed)
+                    }
                 }
             }
         }

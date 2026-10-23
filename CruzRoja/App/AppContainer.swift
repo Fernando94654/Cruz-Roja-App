@@ -57,9 +57,12 @@ final class AppContainer {
         ambulance: AmbulanceTracker(),
         locationProvider: CoreLocationService(),
         dictation: SpeechDictation(),
+        authService: AuthAPIService(),
         medicalProfileService: MedicalProfileAPIService(),
         emergencyReportService: EmergencyReportAPIService(),
-        reportExtractor: FallbackReportExtractor()
+        reportExtractor: FallbackReportExtractor(),
+        familyService: DemoMode.isActive("family") ? MockFamilyService() : FamilyAPIService(),
+        lessonsService: LessonsAPIService()
     )
 
     static let preview = AppContainer(
@@ -82,10 +85,12 @@ final class AppContainer {
         MedicalProfileViewModel(service: medicalProfileService, cache: medicalProfileCache)
     }
 
-    func makeEmergencyReportViewModel(report: EmergencyReport = EmergencyReport(), shareURL: String? = nil) -> EmergencyReportViewModel {
+    func makeEmergencyReportViewModel(report: EmergencyReport = EmergencyReport(),
+                                      location: EmergencyLocation? = nil, shareURL: String? = nil) -> EmergencyReportViewModel {
         let cache = medicalProfileCache
         return EmergencyReportViewModel(
             report: report,
+            location: location,
             shareURL: shareURL,
             service: emergencyReportService,
             extractor: reportExtractor,
@@ -107,11 +112,11 @@ final class AppContainer {
         if DemoMode.isActive("firstaid") {
             messages = [.user(UUID(), "Me corté y sangra mucho"), .assistant(KeywordFirstAidAssistant().search("sangra"))]
         }
-        return FirstAidViewModel(assistant: firstAidAssistant, speech: speech, ambulance: ambulance, messages: messages)
+        return FirstAidViewModel(assistant: firstAidAssistant, speech: speech, ambulance: ambulance, lessonsService: lessonsService, messages: messages)
     }
 
     func makeGuideViewModel(guide: FirstAidGuide) -> GuideViewModel {
-        GuideViewModel(guide: guide, speech: speech, ambulance: ambulance)
+        GuideViewModel(guide: guide, speech: speech, ambulance: ambulance, lessonsService: lessonsService)
     }
 
     func makeAlertsViewModel() -> AlertsViewModel {
@@ -119,7 +124,7 @@ final class AppContainer {
     }
 
     func makeFamilyViewModel() -> FamilyViewModel {
-        FamilyViewModel(service: familyService)
+        FamilyViewModel(service: familyService, locationProvider: locationProvider)
     }
 
     func makeLearnViewModel() -> LearnViewModel {

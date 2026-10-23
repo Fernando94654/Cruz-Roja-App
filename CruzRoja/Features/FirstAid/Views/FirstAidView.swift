@@ -219,6 +219,9 @@ struct AnswerCard: View {
                     .tint(.black)
                 }
             }
+            if let guide = answer.guide {
+                RelatedLessonLink(guideID: guide.id, lessons: viewModel.lessons, stopSpeech: viewModel.stop)
+            }
         }
         .padding()
         .background(.gray.opacity(0.12), in: RoundedRectangle(cornerRadius: 16))
