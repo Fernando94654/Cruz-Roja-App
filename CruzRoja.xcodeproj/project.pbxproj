@@ -161,6 +161,9 @@
 				CURRENT_PROJECT_VERSION = 1;
 				ENABLE_PREVIEWS = YES;
 				GENERATE_INFOPLIST_FILE = YES;
+				INFOPLIST_KEY_NSLocationWhenInUseUsageDescription = "Enlace Vital envía tu ubicación exacta a Cruz Roja cuando reportas una emergencia.";
+				INFOPLIST_KEY_NSMicrophoneUsageDescription = "El micrófono se usa para dictar lo que está pasando en una emergencia.";
+				INFOPLIST_KEY_NSSpeechRecognitionUsageDescription = "El reconocimiento de voz convierte tu dictado en texto para llenar el reporte.";
 				INFOPLIST_KEY_UILaunchScreen_Generation = YES;
 				INFOPLIST_KEY_UISupportedInterfaceOrientations = UIInterfaceOrientationPortrait;
 				INFOPLIST_KEY_UIUserInterfaceStyle = Light;
@@ -179,6 +182,9 @@
 				CURRENT_PROJECT_VERSION = 1;
 				ENABLE_PREVIEWS = YES;
 				GENERATE_INFOPLIST_FILE = YES;
+				INFOPLIST_KEY_NSLocationWhenInUseUsageDescription = "Enlace Vital envía tu ubicación exacta a Cruz Roja cuando reportas una emergencia.";
+				INFOPLIST_KEY_NSMicrophoneUsageDescription = "El micrófono se usa para dictar lo que está pasando en una emergencia.";
+				INFOPLIST_KEY_NSSpeechRecognitionUsageDescription = "El reconocimiento de voz convierte tu dictado en texto para llenar el reporte.";
 				INFOPLIST_KEY_UILaunchScreen_Generation = YES;
 				INFOPLIST_KEY_UISupportedInterfaceOrientations = UIInterfaceOrientationPortrait;
 				INFOPLIST_KEY_UIUserInterfaceStyle = Light;

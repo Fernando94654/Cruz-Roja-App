@@ -12,9 +12,11 @@ struct EmergencyView: View {
     init(container: AppContainer) {
         self.container = container
         _path = State(initialValue: Self.demoPath)
-        var report = EmergencyReport()
-        if DemoMode.isActive("report", "vitals", "summary", "sent", "firstaid", "guide") { report.applyDictationSample() }
-        _reportViewModel = State(initialValue: container.makeEmergencyReportViewModel(report: report, isSent: DemoMode.isActive("sent")))
+        let prefilled = DemoMode.isActive("report", "vitals", "summary", "sent", "firstaid", "guide")
+        _reportViewModel = State(initialValue: container.makeEmergencyReportViewModel(
+            report: prefilled ? container.demoReport() : EmergencyReport(),
+            shareURL: DemoMode.isActive("sent") ? "http://localhost:8000/r/demo" : nil
+        ))
     }
 
     private static var demoPath: [EmergencyRoute] {
@@ -65,6 +67,7 @@ struct EmergencyView: View {
                 .padding()
             }
             .navigationTitle("Emergencia")
+            .task { await reportViewModel.locate() }
             .emergencyDestinations(report: reportViewModel, container: container)
         }
         .alert("¿Reportar una emergencia?", isPresented: $showsConfirmation) {
