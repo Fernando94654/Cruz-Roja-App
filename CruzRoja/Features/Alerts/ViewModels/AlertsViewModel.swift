@@ -33,33 +33,33 @@ final class AlertsViewModel {
         }
     }
 
-    // Optimistic: counts the confirmation right away and reverts if the request fails
-    func confirm(_ report: CommunityReport) async {
-        guard let i = reports.firstIndex(where: { $0.id == report.id }), !reports[i].confirmedByMe else { return }
-        reports[i].confirmations += 1
-        reports[i].confirmedByMe = true
-        do {
-            try await service.confirm(reportID: report.id)
-        } catch {
-            if let j = reports.firstIndex(where: { $0.id == report.id }) {
-                reports[j].confirmations -= 1
-                reports[j].confirmedByMe = false
-            }
-            errorMessage = error.localizedDescription
+    func toggleConfirmation(_ report: CommunityReport) async {
+        guard let current = reports.first(where: { $0.id == report.id }) else { return }
+        let on = !current.confirmedByMe
+        await vote(on: report.id, { $0.setConfirmed(on) }) {
+            on ? try await service.confirm(reportID: report.id) : try await service.unconfirm(reportID: report.id)
         }
     }
 
-    func flagAsFalse(_ report: CommunityReport) async {
-        guard let i = reports.firstIndex(where: { $0.id == report.id }), !reports[i].flaggedByMe else { return }
-        reports[i].flags += 1
-        reports[i].flaggedByMe = true
+    func toggleFalseFlag(_ report: CommunityReport) async {
+        guard let current = reports.first(where: { $0.id == report.id }) else { return }
+        let on = !current.flaggedByMe
+        await vote(on: report.id, { $0.setFlagged(on) }) {
+            on ? try await service.flag(reportID: report.id) : try await service.unflag(reportID: report.id)
+        }
+    }
+
+    // Optimistic: shows the vote right away, keeps what the server answers and reverts if the request fails
+    private func vote(on id: UUID, _ change: (inout CommunityReport) -> Void,
+                      send: () async throws -> CommunityReport) async {
+        guard let i = reports.firstIndex(where: { $0.id == id }) else { return }
+        let before = reports[i]
+        change(&reports[i])
         do {
-            try await service.flag(reportID: report.id)
+            let saved = try await send()
+            if let j = reports.firstIndex(where: { $0.id == id }) { reports[j] = saved }
         } catch {
-            if let j = reports.firstIndex(where: { $0.id == report.id }) {
-                reports[j].flags -= 1
-                reports[j].flaggedByMe = false
-            }
+            if let j = reports.firstIndex(where: { $0.id == id }) { reports[j] = before }
             errorMessage = error.localizedDescription
         }
     }
