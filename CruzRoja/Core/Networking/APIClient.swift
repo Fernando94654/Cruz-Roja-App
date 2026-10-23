@@ -107,4 +107,12 @@ struct APIClient: Sendable {
         }
         return nil
     }
+
+    // DELETE without a response body (204)
+    func delete(_ path: String) async throws {
+        var request = URLRequest(url: baseURL.appending(path: path), timeoutInterval: APIConfig.timeout)
+        request.httpMethod = "DELETE"
+        let (data, response) = try await send(request)
+        try verify(response, data)
+    }
 }
