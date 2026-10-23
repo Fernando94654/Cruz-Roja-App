@@ -9,7 +9,7 @@ protocol SpeechSynthesizing: AnyObject {
     func stop()
 }
 
-// No-op speech for previews and tests
+// No-op speech for tests
 @MainActor
 @Observable
 final class SilentSpeech: SpeechSynthesizing {

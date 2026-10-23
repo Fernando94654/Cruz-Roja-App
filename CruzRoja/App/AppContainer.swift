@@ -67,14 +67,14 @@ final class AppContainer {
 
     static let preview = AppContainer(
         session: SessionStore(defaults: UserDefaults(suiteName: "preview") ?? .standard),
-        speech: SilentSpeech(),
+        speech: SpeechService(),
         ambulance: AmbulanceTracker(),
         locationProvider: FixedLocationProvider(location: CurrentLocation(
             coordinate: Coordinate(latitude: 25.6516, longitude: -100.2895),
             address: "Ubicación simulada, Monterrey, Nuevo León",
             accuracyMeters: 100
         )),
-        dictation: SilentDictation(),
+        dictation: SpeechDictation(),
         medicalProfileService: MockMedicalProfileService(),
         medicalProfileCache: MedicalProfileCache(directory: FileManager.default.temporaryDirectory),
         lessonsService: LessonsAPIService()
