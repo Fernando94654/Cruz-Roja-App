@@ -5,12 +5,20 @@ import Observation
 @Observable
 final class LessonViewModel {
     let lesson: Lesson
+    let progress: LessonProgress?
 
     private let speech: SpeechSynthesizing
 
-    init(lesson: Lesson, speech: SpeechSynthesizing) {
+    init(lesson: Lesson, speech: SpeechSynthesizing, progress: LessonProgress? = nil) {
         self.lesson = lesson
         self.speech = speech
+        self.progress = progress
+    }
+
+    var isCompleted: Bool { progress?.isCompleted(lesson) ?? false }
+
+    func toggleCompletion() async {
+        await progress?.toggle(lesson)
     }
 
     var isSpeaking: Bool { speech.isSpeaking }

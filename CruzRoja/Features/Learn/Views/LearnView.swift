@@ -12,19 +12,33 @@ struct LearnView: View {
 
     var body: some View {
         NavigationStack(path: $path) {
-            List(viewModel.lessons) { lesson in
-                NavigationLink(value: lesson) {
-                    HStack(spacing: 14) {
-                        LessonThumbnail(lesson: lesson)
-                            .frame(width: 110, height: 66)
-                        VStack(alignment: .leading, spacing: 4) {
-                            Text(lesson.title).font(.headline)
-                            Text(lesson.duration.map { "Video · \($0)" } ?? "Video educativo")
-                                .font(.subheadline)
-                                .foregroundStyle(.secondary)
+            List {
+                Section {
+                    ForEach(viewModel.lessons) { lesson in
+                        NavigationLink(value: lesson) {
+                            HStack(spacing: 14) {
+                                LessonThumbnail(lesson: lesson, guides: viewModel.guides)
+                                    .frame(width: 110, height: 66)
+                                VStack(alignment: .leading, spacing: 4) {
+                                    Text(lesson.title).font(.headline)
+                                    Text(lesson.duration.map { "Video · \($0)" } ?? "Video educativo")
+                                        .font(.subheadline)
+                                        .foregroundStyle(.secondary)
+                                }
+                                Spacer(minLength: 0)
+                                if viewModel.progress?.isCompleted(lesson) == true {
+                                    Image(systemName: "checkmark.circle.fill")
+                                        .foregroundStyle(.green)
+                                        .accessibilityLabel("Completada")
+                                }
+                            }
+                            .padding(.vertical, 4)
                         }
                     }
-                    .padding(.vertical, 4)
+                } header: {
+                    if let progress = viewModel.progress, !viewModel.lessons.isEmpty {
+                        Text("\(progress.completedCount(in: viewModel.lessons)) de \(viewModel.lessons.count) completadas")
+                    }
                 }
             }
             .overlay {
@@ -58,10 +72,11 @@ struct LearnView: View {
 
 struct LessonThumbnail: View {
     let lesson: Lesson
+    var guides = FirstAidGuide.bundled
 
     private var icon: String {
         guard let guideID = lesson.guideID else { return "play.rectangle.fill" }
-        return FirstAidGuide.catalog.first { $0.id == guideID }?.icon ?? "play.rectangle.fill"
+        return guides.first { $0.id == guideID }?.icon ?? "play.rectangle.fill"
     }
 
     var body: some View {
@@ -90,5 +105,5 @@ struct LessonThumbnail: View {
 }
 
 #Preview {
-    LearnView(container: .preview)
+    GuidesRefreshed(container: .preview) { LearnView(container: .preview) }
 }

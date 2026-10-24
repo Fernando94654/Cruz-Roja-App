@@ -1,6 +1,6 @@
 from app.models.alerts import CommunityReport, CommunityReportConfirmation, OfficialAlert
 from app.models.circles import Circle, CircleInvitation, CircleMember, UserLocation, WellbeingCheck
-from app.models.learning import Lesson
+from app.models.learning import Guide, Lesson, LessonCompletion
 from app.models.medical import DependentContact, DependentProfile, EmergencyContact, MedicalProfile
 from app.models.reports import EmergencyReport
 from app.models.users import Device, User
@@ -16,7 +16,9 @@ __all__ = [
     "Device",
     "EmergencyContact",
     "EmergencyReport",
+    "Guide",
     "Lesson",
+    "LessonCompletion",
     "MedicalProfile",
     "OfficialAlert",
     "User",

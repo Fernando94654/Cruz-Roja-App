@@ -125,5 +125,8 @@ struct GuideView: View {
 }
 
 #Preview {
-    NavigationStack { GuideView(viewModel: AppContainer.preview.makeGuideViewModel(guide: FirstAidGuide.catalog[0])) }
+    let container = AppContainer.preview
+    GuidesRefreshed(container: container) {
+        NavigationStack { GuideView(viewModel: container.makeGuideViewModel(guide: container.guides[0])) }
+    }
 }

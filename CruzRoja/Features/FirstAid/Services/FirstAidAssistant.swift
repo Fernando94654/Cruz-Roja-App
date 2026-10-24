@@ -8,6 +8,8 @@ protocol FirstAidAssisting: Sendable {
 struct KeywordFirstAidAssistant: FirstAidAssisting {
     let manual = "Manual de Primeros Auxilios (demo)"
     var delay: Duration = .seconds(1.4)
+    // Latest guides from the server when cached, the bundled ones otherwise
+    var guides: @Sendable () -> [FirstAidGuide] = { FirstAidGuide.bundled }
 
     func answer(_ question: String) async -> AssistantAnswer {
         try? await Task.sleep(for: delay)
@@ -16,7 +18,7 @@ struct KeywordFirstAidAssistant: FirstAidAssisting {
 
     func search(_ question: String) -> AssistantAnswer {
         let text = question.lowercased()
-        let match = FirstAidGuide.catalog
+        let match = guides()
             .map { guide in (guide, guide.keywords.filter { text.contains($0) }.count) }
             .filter { $0.1 > 0 }
             .max { $0.1 < $1.1 }?.0
@@ -30,7 +32,7 @@ struct KeywordFirstAidAssistant: FirstAidAssisting {
         }
 
         let sources = guide.steps.prefix(2).enumerated().map { i, step in
-            SourceExcerpt(document: manual, page: guide.manualPage + i, excerpt: step.instruction)
+            SourceExcerpt(document: manual, page: guide.manualPage.map { $0 + i }, excerpt: step.instruction)
         }
         return AssistantAnswer(
             text: "Parece un caso de \(guide.title.lowercased()). Primero: \(guide.steps[0].instruction) Te puedo guiar paso a paso por voz mientras llega la ambulancia.",
