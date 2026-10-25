@@ -118,6 +118,7 @@ final class AppContainer {
     func makeEmergencyReportViewModel(report: EmergencyReport = EmergencyReport(),
                                       location: EmergencyLocation? = nil, shareURL: String? = nil) -> EmergencyReportViewModel {
         let cache = medicalProfileCache
+        let ambulance = ambulance
         return EmergencyReportViewModel(
             report: report,
             location: location,
@@ -126,7 +127,8 @@ final class AppContainer {
             extractor: reportExtractor,
             locationProvider: locationProvider,
             dictation: dictationFactory(),
-            medicalSummary: { cache.load()?.reportSummary }
+            medicalSummary: { cache.load()?.reportSummary },
+            onSent: { ambulance.request() }
         )
     }
 
@@ -142,12 +144,12 @@ final class AppContainer {
         if DemoMode.isActive("firstaid") {
             messages = [.user(UUID(), "Me corté y sangra mucho"), .assistant(KeywordFirstAidAssistant().search("sangra"))]
         }
-        return FirstAidViewModel(assistant: firstAidAssistant, speech: speech, ambulance: ambulance, lessonsService: lessonsService,
+        return FirstAidViewModel(assistant: firstAidAssistant, speech: speech, lessonsService: lessonsService,
                                  guides: guideCache.load(), messages: messages)
     }
 
     func makeGuideViewModel(guide: FirstAidGuide) -> GuideViewModel {
-        GuideViewModel(guide: guide, speech: speech, ambulance: ambulance, lessonsService: lessonsService)
+        GuideViewModel(guide: guide, speech: speech, lessonsService: lessonsService)
     }
 
     func makeAlertsViewModel() -> AlertsViewModel {

@@ -4,6 +4,7 @@ struct YouTubeVideo: Hashable, Sendable {
     let id: String
     var url: URL { URL(string: "https://www.youtube.com/watch?v=\(id)")! }
 
+    // Accepts only HTTPS YouTube links with a single valid 11-character video ID
     init?(_ rawValue: String) {
         guard let parts = URLComponents(string: rawValue),
               parts.scheme?.lowercased() == "https", parts.user == nil, parts.password == nil,

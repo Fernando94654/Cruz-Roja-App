@@ -7,8 +7,9 @@ extension View {
             switch route {
             case .report: ReportView(viewModel: viewModel)
             case .summary: SummaryView(viewModel: viewModel)
-            case .firstAid: FirstAidView(viewModel: container.makeFirstAidViewModel())
-            case .guide(let guide): GuideView(viewModel: container.makeGuideViewModel(guide: guide))
+            case .firstAid: FirstAidView(viewModel: container.makeFirstAidViewModel()).ambulanceStatus(container)
+            case .guide(let guide):
+                GuideView(viewModel: container.makeGuideViewModel(guide: guide)).ambulanceStatus(container, announcesArrival: true)
             case .lesson(let lesson, let autoplay):
                 LessonView(viewModel: container.makeLessonViewModel(lesson: lesson), autoplay: autoplay)
             }

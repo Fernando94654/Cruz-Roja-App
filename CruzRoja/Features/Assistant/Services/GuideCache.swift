@@ -4,12 +4,14 @@ import Foundation
 struct GuideCache: Sendable {
     let file: URL
 
+    // Saves to Application Support; tests pass a temporary folder
     init(directory: URL? = nil) {
         let folder = directory
             ?? FileManager.default.urls(for: .applicationSupportDirectory, in: .userDomainMask)[0]
         file = folder.appending(path: "guides.json")
     }
 
+    // Returns the cached guides, or the bundled ones if there are none
     func load() -> [FirstAidGuide] {
         guard let data = try? Data(contentsOf: file),
               let guides = try? JSONDecoder().decode([FirstAidGuide].self, from: data),

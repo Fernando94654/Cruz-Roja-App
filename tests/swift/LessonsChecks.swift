@@ -204,7 +204,7 @@ struct LessonsChecks {
             assert(retry.lessons.first { $0.guideID == guideID } == nil)
         }
         let speech = SilentSpeech()
-        let emergency = FirstAidViewModel(assistant: assistant, speech: speech, ambulance: AmbulanceTracker(), lessonsService: RetryService())
+        let emergency = FirstAidViewModel(assistant: assistant, speech: speech, lessonsService: RetryService())
         await emergency.lessons.load()
         await emergency.send("sangra")
         assert(emergency.messages.count == 2 && !speech.spoken.isEmpty)
@@ -213,18 +213,18 @@ struct LessonsChecks {
         let count = speech.spoken.count
         await emergency.send("sangra")
         assert(speech.spoken.count == count) // a late answer cannot speak over video
-        let guide = GuideViewModel(guide: FirstAidGuide.bundled[0], speech: speech, ambulance: AmbulanceTracker(), lessonsService: EmptyService())
+        let guide = GuideViewModel(guide: FirstAidGuide.bundled[0], speech: speech, lessonsService: EmptyService())
         guide.stop()
         await guide.runStep()
         assert(speech.spoken.count == count)
         // Guides: the GET /guides payload decodes, and the cache never leaves the app without guides
         let guidesJSON = Data("""
-        [{"id":"allergy","title":"Alergia","icon":"allergens","keywords":["alerg"],"manual_page":null,"position":0,
+        [{"id":"allergy","title":"Alergia","icon":"allergens","keywords":["alerg"],"position":0,
           "steps":[{"title":"Llama","instruction":"Pide ayuda.","icon":"phone.fill","seconds":null,"rate":null},
                    {"title":"Comprime","instruction":"Fuerte.","icon":"heart","seconds":18,"rate":110}]}]
         """.utf8)
         let served = try decoder.decode([FirstAidGuide].self, from: guidesJSON)
-        assert(served[0].manualPage == nil && served[0].steps[1].rate == 110 && served[0].steps[0].seconds == nil)
+        assert(served[0].steps[1].rate == 110 && served[0].steps[0].seconds == nil)
         let cacheFolder = FileManager.default.temporaryDirectory.appending(path: UUID().uuidString)
         let guideCache = GuideCache(directory: cacheFolder)
         assert(guideCache.load() == FirstAidGuide.bundled) // nothing cached yet

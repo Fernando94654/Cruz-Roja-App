@@ -28,6 +28,8 @@ final class EmergencyReportViewModel {
     private let hasProvidedLocation: Bool
     // Summary of the user's own medical profile, attached when reporting for themselves
     private let medicalSummary: () -> String?
+    // Runs once the report is stored, which is when the ambulance is dispatched
+    private let onSent: @MainActor () -> Void
     private var textBeforeDictation = ""
     @ObservationIgnored private var isApplyingFill = false
 
@@ -39,7 +41,8 @@ final class EmergencyReportViewModel {
         extractor: ReportExtracting,
         locationProvider: LocationProviding,
         dictation: Dictating,
-        medicalSummary: @escaping () -> String?
+        medicalSummary: @escaping () -> String?,
+        onSent: @escaping @MainActor () -> Void = {}
     ) {
         self.report = report
         self.location = location
@@ -50,6 +53,7 @@ final class EmergencyReportViewModel {
         self.locationProvider = locationProvider
         self.dictation = dictation
         self.medicalSummary = medicalSummary
+        self.onSent = onSent
     }
 
     var isSent: Bool { shareURL != nil }
@@ -161,6 +165,7 @@ final class EmergencyReportViewModel {
             let medical = report.reportingFor == .myself ? medicalSummary() : nil
             let sent = try await service.send(report, location: location, summary: summary, medicalSummary: medical)
             shareURL = sent.shareURL
+            onSent()
             return true
         } catch {
             errorMessage = error.localizedDescription
