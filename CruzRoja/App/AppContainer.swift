@@ -144,7 +144,8 @@ final class AppContainer {
         if DemoMode.isActive("firstaid") {
             messages = [.user(UUID(), "Me corté y sangra mucho"), .assistant(KeywordFirstAidAssistant().search("sangra"))]
         }
-        return FirstAidViewModel(assistant: firstAidAssistant, speech: speech, lessonsService: lessonsService,
+        return FirstAidViewModel(assistant: firstAidAssistant, speech: speech, dictation: dictationFactory(),
+                                 lessonsService: lessonsService,
                                  guides: guideCache.load(), messages: messages)
     }
 

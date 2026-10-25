@@ -7,11 +7,14 @@ final class FirstAidViewModel {
     var draft = ""
     private(set) var messages: [ChatMessage]
     private(set) var isThinking = false
-    private(set) var isListening = false
+    private(set) var isPreparingDictation = false
+    private(set) var dictationError: String?
+    var isListening: Bool { dictation.isListening }
 
     let speech: SpeechSynthesizing
     let lessons: LearnViewModel
     private let assistant: FirstAidAssisting
+    private let dictation: Dictating
     private var isActive = true
 
     let suggestions = [
@@ -25,9 +28,10 @@ final class FirstAidViewModel {
     var hasDraft: Bool { !draft.trimmingCharacters(in: .whitespaces).isEmpty }
 
     // Owns its own lesson list so related videos load independently
-    init(assistant: FirstAidAssisting, speech: SpeechSynthesizing, lessonsService: LessonsServicing,
+    init(assistant: FirstAidAssisting, speech: SpeechSynthesizing, dictation: Dictating, lessonsService: LessonsServicing,
          guides: [FirstAidGuide] = FirstAidGuide.bundled, messages: [ChatMessage] = []) {
         self.assistant = assistant
+        self.dictation = dictation
         self.guides = guides
         self.speech = speech
         self.messages = messages
@@ -39,10 +43,11 @@ final class FirstAidViewModel {
         isActive = true
     }
 
-    // Called when leaving: silences speech and blocks late answers
+    // Called when leaving: silences speech, closes the microphone and blocks late answers
     func stop() {
         isActive = false
         speech.stop()
+        dictation.stop()
     }
 
     // Clears the conversation for a new emergency
@@ -64,14 +69,30 @@ final class FirstAidViewModel {
         if isActive { speech.speak(answer.text) }
     }
 
-    // Fixed phrase until on-device speech recognition exists
-    func dictate() async {
-        speech.stop()
-        isListening = true
-        try? await Task.sleep(for: .seconds(2))
-        isListening = false
-        guard isActive, !Task.isCancelled else { return }
-        await send("Mi abuela se desmayó y está mareada")
+    // First tap listens and writes what the user says into the draft; second tap stops and sends it
+    func toggleDictation() async {
+        if dictation.isListening {
+            dictation.stop()
+            await send(draft)
+            return
+        }
+        guard !isPreparingDictation else { return }
+        speech.stop() // the assistant's voice would be transcribed too
+        dictationError = nil
+        draft = ""
+        isPreparingDictation = true
+        defer { isPreparingDictation = false }
+        do {
+            try await dictation.start(onText: { [weak self] text in
+                self?.draft = text
+            }, onError: { [weak self] message in
+                self?.dictationError = message
+            })
+        } catch is CancellationError {
+            return
+        } catch {
+            dictationError = error.localizedDescription
+        }
     }
 
     // Reads an answer aloud again, or stops reading
