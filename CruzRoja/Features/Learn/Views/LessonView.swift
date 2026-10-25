@@ -6,6 +6,7 @@ struct LessonView: View {
     @Environment(\.scenePhase) private var scenePhase
     let autoplay: Bool
 
+    // Pairs the lesson with its YouTube player session
     init(viewModel: LessonViewModel, autoplay: Bool = false) {
         _viewModel = State(initialValue: viewModel)
         _playerViewModel = State(initialValue: LessonPlayerViewModel(lesson: viewModel, makePlayer: YouTubePlayerController.init))
@@ -120,7 +121,7 @@ private struct CompletionButton: View {
             .accessibilityHint("Toca para marcarla como no completada")
         } else {
             Button(action: action) {
-                Label("Marcar como completada", systemImage: "checkmark.circle")
+                Text("Marcar como completada")
                     .frame(maxWidth: .infinity)
             }
             .buttonStyle(.borderedProminent)

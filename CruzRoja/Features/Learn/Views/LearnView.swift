@@ -5,6 +5,7 @@ struct LearnView: View {
     @State private var viewModel: LearnViewModel
     @State private var path: [Lesson] = []
 
+    // Builds the lesson list view model from the app container
     init(container: AppContainer) {
         self.container = container
         _viewModel = State(initialValue: container.makeLearnViewModel())

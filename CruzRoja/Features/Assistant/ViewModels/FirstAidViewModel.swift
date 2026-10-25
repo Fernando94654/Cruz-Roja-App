@@ -9,7 +9,6 @@ final class FirstAidViewModel {
     private(set) var isThinking = false
     private(set) var isListening = false
 
-    let ambulance: AmbulanceTracker
     let speech: SpeechSynthesizing
     let lessons: LearnViewModel
     private let assistant: FirstAidAssisting
@@ -25,31 +24,34 @@ final class FirstAidViewModel {
     let guides: [FirstAidGuide]
     var hasDraft: Bool { !draft.trimmingCharacters(in: .whitespaces).isEmpty }
 
-    init(assistant: FirstAidAssisting, speech: SpeechSynthesizing, ambulance: AmbulanceTracker, lessonsService: LessonsServicing,
+    // Owns its own lesson list so related videos load independently
+    init(assistant: FirstAidAssisting, speech: SpeechSynthesizing, lessonsService: LessonsServicing,
          guides: [FirstAidGuide] = FirstAidGuide.bundled, messages: [ChatMessage] = []) {
         self.assistant = assistant
         self.guides = guides
         self.speech = speech
-        self.ambulance = ambulance
         self.messages = messages
         lessons = LearnViewModel(service: lessonsService, guides: guides)
     }
 
+    // Called when the screen opens: answers may speak again
     func start() {
         isActive = true
-        ambulance.request()
     }
 
+    // Called when leaving: silences speech and blocks late answers
     func stop() {
         isActive = false
         speech.stop()
     }
 
+    // Clears the conversation for a new emergency
     func reset() {
         speech.stop()
         messages.removeAll()
     }
 
+    // Adds the question, asks the assistant and reads the answer aloud
     func send(_ text: String) async {
         let question = text.trimmingCharacters(in: .whitespacesAndNewlines)
         guard !question.isEmpty, !isThinking else { return }
@@ -72,6 +74,7 @@ final class FirstAidViewModel {
         await send("Mi abuela se desmayó y está mareada")
     }
 
+    // Reads an answer aloud again, or stops reading
     func toggleSpeech(for answer: AssistantAnswer) {
         if speech.isSpeaking { speech.stop() } else { speech.speak(answer.text) }
     }

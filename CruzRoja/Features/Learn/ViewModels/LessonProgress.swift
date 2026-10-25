@@ -13,6 +13,7 @@ final class LessonProgress {
     @ObservationIgnored private let isSignedIn: () -> Bool
     @ObservationIgnored private var isSyncing = false
 
+    // Starts from the progress saved on the device
     init(service: LessonProgressServicing, store: LessonProgressStore = LessonProgressStore(),
          isSignedIn: @escaping () -> Bool = { AuthToken.current != nil }) {
         self.service = service
@@ -21,6 +22,7 @@ final class LessonProgress {
         completed = store.completed
     }
 
+    // Whether this lesson is marked completed
     func isCompleted(_ lesson: Lesson) -> Bool {
         completed.contains(lesson.id)
     }
@@ -30,6 +32,7 @@ final class LessonProgress {
         lessons.filter(isCompleted).count
     }
 
+    // Marks or unmarks the lesson on the device, then tries to sync
     func toggle(_ lesson: Lesson) async {
         if completed.contains(lesson.id) {
             completed.remove(lesson.id)

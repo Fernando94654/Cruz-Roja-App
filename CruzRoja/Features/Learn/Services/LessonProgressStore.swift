@@ -15,15 +15,18 @@ struct LessonProgressStore {
         nonmutating set { save(newValue, forKey: Keys.pendingRemovals) }
     }
 
+    // Forgets all saved progress; called on sign-out
     func clear() {
         defaults.removeObject(forKey: Keys.completed)
         defaults.removeObject(forKey: Keys.pendingRemovals)
     }
 
+    // Reads a set of UUIDs saved as strings
     private func ids(forKey key: String) -> Set<UUID> {
         Set((defaults.stringArray(forKey: key) ?? []).compactMap(UUID.init(uuidString:)))
     }
 
+    // Writes a set of UUIDs as strings
     private func save(_ ids: Set<UUID>, forKey key: String) {
         defaults.set(ids.map(\.uuidString), forKey: key)
     }

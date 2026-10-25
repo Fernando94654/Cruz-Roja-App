@@ -9,6 +9,7 @@ final class LessonViewModel {
 
     private let speech: SpeechSynthesizing
 
+    // Progress is optional so lessons opened from an emergency skip the completion button
     init(lesson: Lesson, speech: SpeechSynthesizing, progress: LessonProgress? = nil) {
         self.lesson = lesson
         self.speech = speech
@@ -17,12 +18,14 @@ final class LessonViewModel {
 
     var isCompleted: Bool { progress?.isCompleted(lesson) ?? false }
 
+    // Marks or unmarks this lesson as completed
     func toggleCompletion() async {
         await progress?.toggle(lesson)
     }
 
     var isSpeaking: Bool { speech.isSpeaking }
 
+    // Reads the title and steps aloud, or stops reading
     func toggleSpeech() {
         if speech.isSpeaking {
             speech.stop()
@@ -31,6 +34,7 @@ final class LessonViewModel {
         }
     }
 
+    // Stops reading aloud
     func stop() {
         speech.stop()
     }

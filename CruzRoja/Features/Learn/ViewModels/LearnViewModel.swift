@@ -15,12 +15,14 @@ final class LearnViewModel {
 
     private let service: LessonsServicing
 
+    // Progress is optional so the emergency screens can reuse the lesson list
     init(service: LessonsServicing, progress: LessonProgress? = nil, guides: [FirstAidGuide] = FirstAidGuide.bundled) {
         self.service = service
         self.progress = progress
         self.guides = guides
     }
 
+    // Fetches the lessons, shows an error on failure and syncs progress on success
     func load() async {
         guard !isLoading else { return }
         isLoading = true
