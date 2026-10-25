@@ -82,13 +82,19 @@ struct CruzRojaTestsAprende {
         #expect(progress.completedCount(in: fixtures) == 2)
     }
 
-    @Test("\"Mi abuela se desmayó\" da la guía de desmayo por voz aunque falle el video")
+    @Test("Dictar \"Mi abuela se desmayó\" da la guía de desmayo por voz aunque falle el video")
     func emergencyScenarioGivesGuide() async {
         let speech = SilentSpeech()
+        let microphone = SilentDictation()
+        microphone.transcript = "Mi abuela se desmayó y está mareada"
         let emergency = FirstAidViewModel(assistant: KeywordFirstAidAssistant(delay: .zero), speech: speech,
-                                          lessonsService: RetryService())
+                                          dictation: microphone, lessonsService: RetryService())
         await emergency.lessons.load() // the video catalog fails
-        await emergency.send("Mi abuela se desmayó y está mareada")
+
+        await emergency.toggleDictation() // first tap: listens
+        #expect(emergency.isListening && emergency.draft == "Mi abuela se desmayó y está mareada")
+        await emergency.toggleDictation() // second tap: stops and sends
+        #expect(!emergency.isListening && emergency.draft.isEmpty)
 
         guard case .assistant(let answer) = emergency.messages.last else {
             Issue.record("The assistant did not answer")

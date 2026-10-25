@@ -204,7 +204,7 @@ struct LessonsChecks {
             assert(retry.lessons.first { $0.guideID == guideID } == nil)
         }
         let speech = SilentSpeech()
-        let emergency = FirstAidViewModel(assistant: assistant, speech: speech, lessonsService: RetryService())
+        let emergency = FirstAidViewModel(assistant: assistant, speech: speech, dictation: SilentDictation(), lessonsService: RetryService())
         await emergency.lessons.load()
         await emergency.send("sangra")
         assert(emergency.messages.count == 2 && !speech.spoken.isEmpty)
