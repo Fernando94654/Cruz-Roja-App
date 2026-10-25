@@ -200,8 +200,10 @@ struct AnswerCard: View {
 
 #Preview {
     let container = AppContainer.preview
-    NavigationStack {
-        FirstAidView(viewModel: container.makeFirstAidViewModel())
-            .emergencyDestinations(report: container.makeEmergencyReportViewModel(), container: container)
+    GuidesRefreshed(container: container) {
+        NavigationStack {
+            FirstAidView(viewModel: container.makeFirstAidViewModel())
+                .emergencyDestinations(report: container.makeEmergencyReportViewModel(), container: container)
+        }
     }
 }

@@ -36,6 +36,7 @@ struct RootView: View {
                 .tag(AppTab.profile)
         }
         .tint(Color.brandRed)
+        .task { await container.refreshGuides() }
     }
 }
 

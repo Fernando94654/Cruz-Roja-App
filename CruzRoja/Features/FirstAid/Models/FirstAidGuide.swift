@@ -1,6 +1,6 @@
 import Foundation
 
-struct GuideStep: Hashable, Sendable {
+struct GuideStep: Hashable, Sendable, Codable {
     let title: String
     let instruction: String
     let icon: String
@@ -9,18 +9,24 @@ struct GuideStep: Hashable, Sendable {
     var rate: Int? = nil
 }
 
-struct FirstAidGuide: Identifiable, Hashable, Sendable {
+struct FirstAidGuide: Identifiable, Hashable, Sendable, Codable {
     let id: String
     let title: String
     let icon: String
     let keywords: [String]
-    let manualPage: Int
+    let manualPage: Int?
     let steps: [GuideStep]
+
+    enum CodingKeys: String, CodingKey {
+        case id, title, icon, keywords, steps
+        case manualPage = "manual_page"
+    }
 }
 
-// Content based on Cruz Roja protocols; will come from the backend once the RAG exists
+// Content based on Cruz Roja protocols. GET /guides serves the same guides; this copy ships
+// with the app so the guidance still works offline, the moment the network matters most
 extension FirstAidGuide {
-    static let catalog = [
+    static let bundled = [
         FirstAidGuide(
             id: "cardiac_arrest", title: "Paro cardiaco", icon: "heart.slash.fill",
             keywords: ["no respira", "no responde", "infarto", "corazón", "corazon", "paro", "rcp", "inconsciente"],

@@ -22,15 +22,17 @@ final class FirstAidViewModel {
         "Se quemó con aceite",
     ]
 
-    var guides: [FirstAidGuide] { FirstAidGuide.catalog }
+    let guides: [FirstAidGuide]
     var hasDraft: Bool { !draft.trimmingCharacters(in: .whitespaces).isEmpty }
 
-    init(assistant: FirstAidAssisting, speech: SpeechSynthesizing, ambulance: AmbulanceTracker, lessonsService: LessonsServicing, messages: [ChatMessage] = []) {
+    init(assistant: FirstAidAssisting, speech: SpeechSynthesizing, ambulance: AmbulanceTracker, lessonsService: LessonsServicing,
+         guides: [FirstAidGuide] = FirstAidGuide.bundled, messages: [ChatMessage] = []) {
         self.assistant = assistant
+        self.guides = guides
         self.speech = speech
         self.ambulance = ambulance
         self.messages = messages
-        lessons = LearnViewModel(service: lessonsService)
+        lessons = LearnViewModel(service: lessonsService, guides: guides)
     }
 
     func start() {

@@ -24,7 +24,7 @@ struct EmergencyView: View {
         case "report", "vitals": [.report]
         case "summary", "sent": [.report, .summary]
         case "firstaid": [.report, .summary, .firstAid]
-        case "guide": [.report, .summary, .firstAid, .guide(FirstAidGuide.catalog[0])]
+        case "guide": [.report, .summary, .firstAid, .guide(FirstAidGuide.bundled[0])]
         default: []
         }
     }

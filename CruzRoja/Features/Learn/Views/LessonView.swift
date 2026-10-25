@@ -68,6 +68,12 @@ struct LessonView: View {
                     }
                 }
 
+                if viewModel.progress != nil {
+                    CompletionButton(isCompleted: viewModel.isCompleted) {
+                        Task { await viewModel.toggleCompletion() }
+                    }
+                }
+
                 Button {
                     playerViewModel.toggleSpeech()
                 } label: {
@@ -95,6 +101,30 @@ struct LessonView: View {
         }
         .onChange(of: scenePhase) {
             playerViewModel.scenePhaseChanged(isActive: scenePhase == .active)
+        }
+    }
+}
+
+private struct CompletionButton: View {
+    let isCompleted: Bool
+    let action: () -> Void
+
+    var body: some View {
+        if isCompleted {
+            Button(action: action) {
+                Label("Completada", systemImage: "checkmark.circle.fill")
+                    .frame(maxWidth: .infinity)
+            }
+            .buttonStyle(.bordered)
+            .tint(.green)
+            .accessibilityHint("Toca para marcarla como no completada")
+        } else {
+            Button(action: action) {
+                Label("Marcar como completada", systemImage: "checkmark.circle")
+                    .frame(maxWidth: .infinity)
+            }
+            .buttonStyle(.borderedProminent)
+            .tint(Color.brandRed)
         }
     }
 }

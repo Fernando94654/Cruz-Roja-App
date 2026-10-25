@@ -3,7 +3,7 @@ import Foundation
 struct SourceExcerpt: Identifiable, Hashable, Sendable {
     let id = UUID()
     let document: String
-    let page: Int
+    let page: Int?
     let excerpt: String
 }
 

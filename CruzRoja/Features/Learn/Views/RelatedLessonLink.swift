@@ -11,7 +11,7 @@ struct RelatedLessonLink: View {
             if let lesson = lessons.lessons.first(where: { $0.guideID == guideID }), lesson.video != nil {
                 NavigationLink(value: EmergencyRoute.lesson(lesson, autoplay: true)) {
                     VStack(alignment: .leading, spacing: 10) {
-                        LessonThumbnail(lesson: lesson)
+                        LessonThumbnail(lesson: lesson, guides: lessons.guides)
                             .frame(height: 130)
                         HStack(spacing: 8) {
                             Image(systemName: "play.circle.fill")

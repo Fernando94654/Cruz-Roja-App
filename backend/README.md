@@ -47,7 +47,7 @@ From the repository root, run the Swift behavior checks with `bash tests/swift/r
 
 ## Curated YouTube lessons
 
-`GET /lessons` returns the database records ordered by `position`, then `id`, with nullable `guide_id`, `description`, `video_url`, `publisher`, and `duration_seconds`, plus ordered `steps`. An empty catalog returns `[]`; database failures return a generic 503. The app decodes the UUID and lesson content directly, without generating a replacement or falling back to sample lessons. The emergency assistant's guide text remains local for this version.
+`GET /lessons` returns the database records ordered by `position`, then `id`, with nullable `guide_id`, `description`, `video_url`, `publisher`, and `duration_seconds`, plus ordered `steps`. An empty catalog returns `[]`; database failures return a generic 503. The app decodes the UUID and lesson content directly, without generating a replacement or falling back to sample lessons.
 
 Migration `0005` added the publisher and ordered steps columns. The four YouTube lessons were populated in Supabase before this change. Migration `0006` adds `guide_id` and backfills its four existing rows by UUID; afterward, lesson associations are edited in Supabase like any other lesson field. The API has no hardcoded UUID-to-guide catalog, and the completed one-time lesson updater has been removed.
 
@@ -63,6 +63,22 @@ New lessons can use any publisher, guide ID, and ordered step list. The developm
 **Do not run `scripts/seed.py` against shared Supabase:** it still truncates shared user and alert tables. Before upgrading an existing database, check its Alembic revision and apply only pending migrations.
 
 The app loads YouTube's embed URL directly in `WKWebView`, passing its installed bundle identifier in the HTTPS `Referer` header as [YouTube requires](https://developers.google.com/youtube/terms/required-minimum-functionality). It uses YouTube controls, inline playback, and no autoplay. WebKit's native playback-state query is checked while the lesson is visible so speech stops when a video begins. A validated external YouTube link remains available if embedding fails. Leaving the lesson unloads the player and stops speech; backgrounding pauses playback. Emergency video loading never blocks the existing text/voice guidance.
+
+## Emergency guides
+
+`GET /guides` (public) returns the step-by-step emergency protocols ordered by `position`, each with its SF Symbol `icon`, `keywords`, `manual_page` and ordered `steps` (`title`, `instruction`, `icon`, optional `seconds` timer and `rate` in compressions per minute). Database failures return a generic 503.
+
+Migration `0010` creates the `guides` table, seeds the six guides the app used to hardcode, and turns `lessons.guide_id` into a foreign key (`ON UPDATE CASCADE`, `ON DELETE SET NULL`). The migration fails if a lesson points to a guide id that doesn't exist; fix that row before upgrading. The app caches the last server copy and keeps its bundled guides as the offline fallback, since guides are needed exactly when the network may be down.
+
+## Lesson completion
+
+All three require a signed-in user:
+
+- `GET /lessons/completions` lists the user's completed lessons (`lesson_id`, `completed_at`).
+- `POST /lessons/completions` with `{"lesson_ids": [...]}` marks them completed and returns the full list. Repeats are ignored and ids of deleted lessons are skipped, so the app can send everything it saved while offline or signed out in one request.
+- `DELETE /lessons/{lesson_id}/completion` undoes it (204, idempotent).
+
+The app saves completion on the device first and syncs it when the user is signed in; signing out clears the device copy.
 
 ## Structure
 
@@ -95,6 +111,10 @@ tests/
 | GET | `/users/{user_id}/medical-profile` | Returns the medical profile | 200, 404 |
 | PUT | `/users/{user_id}/medical-profile` | Creates or replaces the whole profile | 200, 404, 422 |
 | GET | `/lessons` | Ordered lessons with stable UUID and optional emergency guide ID | 200, 503 |
+| GET | `/guides` | Ordered emergency guides with their steps | 200, 503 |
+| GET | `/lessons/completions` | My completed lessons (token required) | 200, 401 |
+| POST | `/lessons/completions` | Mark `{lesson_ids}` completed, returns my full list | 200, 401, 422 |
+| DELETE | `/lessons/{lesson_id}/completion` | Undo a completion | 204, 401 |
 
 ```json
 {
