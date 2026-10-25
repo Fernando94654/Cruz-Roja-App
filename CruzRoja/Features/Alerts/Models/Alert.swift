@@ -1,5 +1,6 @@
 import SwiftUI
 
+// Nivel de severidad de una alerta oficial, con el nombre y color que se muestran en la interfaz
 enum AlertSeverity: String, CaseIterable, Hashable, Sendable {
     case info
     case moderate
@@ -36,7 +37,7 @@ struct OfficialAlert: Identifiable, Hashable, Sendable {
     var icon = "exclamationmark.triangle.fill"
 }
 
-// Raw values match the backend's community_report_type enum
+// Los rawValue coinciden con los tipos de reporte definidos en el backend
 enum CommunityReportCategory: String, CaseIterable, Identifiable, Hashable, Sendable {
     case flood
     case blockedStreet = "blocked_street"
@@ -81,6 +82,7 @@ struct CommunityReport: Identifiable, Hashable, Sendable {
         confirmations >= Self.confirmationThreshold
     }
 
+    // Cada usuario tiene un solo voto: al confirmar se elimina su marca de falso y viceversa
     mutating func setConfirmed(_ value: Bool) {
         if value != confirmedByMe {
             confirmations += value ? 1 : -1
@@ -98,6 +100,7 @@ struct CommunityReport: Identifiable, Hashable, Sendable {
     }
 }
 
+// Datos de ejemplo que usan el servicio de prueba y los previews
 extension OfficialAlert {
     static func samples(now: Date = Date()) -> [OfficialAlert] {
         [

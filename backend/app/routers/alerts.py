@@ -1,15 +1,15 @@
-"""Official alerts and neighbor reports.
+"""Endpoints de alertas oficiales y reportes de vecinos.
 
-GET  /alerts/official                    Official alerts in effect (SMN, Protección Civil); read-only
-GET  /alerts/reports                     Neighbor reports that haven't expired or been flagged as false
-POST /alerts/reports                     Publish a report (201); it expires after REPORT_HOURS
-POST   /alerts/reports/{report_id}/confirm Confirm someone else's report
-DELETE /alerts/reports/{report_id}/confirm Take the confirmation back
-POST   /alerts/reports/{report_id}/flag    Mark a report as false
-DELETE /alerts/reports/{report_id}/flag    Take the flag back
+GET    /alerts/official                     Alertas oficiales vigentes (SMN, Proteccion Civil), solo lectura
+GET    /alerts/reports                      Reportes vigentes que no alcanzan el limite de marcas de falso
+POST   /alerts/reports                      Publica un reporte que expira despues de REPORT_HOURS
+POST   /alerts/reports/{report_id}/confirm  Confirma el reporte de otro usuario
+DELETE /alerts/reports/{report_id}/confirm  Elimina la confirmacion del usuario
+POST   /alerts/reports/{report_id}/flag     Marca un reporte como falso
+DELETE /alerts/reports/{report_id}/flag     Elimina la marca de falso del usuario
 
-Each user has one vote per report: confirming removes their flag and flagging removes their confirmation.
-Official alerts are loaded by the system, never by users. Reports never say who published them.
+Cada usuario tiene un solo voto por reporte: confirmar elimina su marca de falso y viceversa.
+Las alertas oficiales solo las registra el sistema y nunca se expone quien publico un reporte.
 """
 
 import uuid
@@ -27,6 +27,7 @@ from app.schemas.alerts import CommunityReportIn, CommunityReportOut, OfficialAl
 
 router = APIRouter(prefix="/alerts", tags=["Alerts"])
 
+# Duracion de un reporte y numero de marcas de falso necesarias para ocultarlo
 REPORT_HOURS = 4
 FLAG_LIMIT = 3
 
@@ -47,6 +48,7 @@ def remove_vote(db: Session, model, report_id: uuid.UUID, user_id: uuid.UUID) ->
     db.execute(delete(model).where(model.report_id == report_id, model.user_id == user_id))
 
 
+# Convierte un reporte de la base de datos al formato de respuesta, con los votos del usuario actual
 def to_out(db: Session, report: CommunityReport, me: User) -> CommunityReportOut:
     return CommunityReportOut(
         id=report.id,
@@ -61,6 +63,7 @@ def to_out(db: Session, report: CommunityReport, me: User) -> CommunityReportOut
     )
 
 
+# Regresa 404 si el reporte no existe, ya expiro o fue ocultado por marcas de falso
 def get_active_report(db: Session, report_id: uuid.UUID) -> CommunityReport:
     report = db.get(CommunityReport, report_id)
     if report is None or report.expires_at <= now() or count_of(db, CommunityReportFlag, report.id) >= FLAG_LIMIT:
@@ -70,6 +73,7 @@ def get_active_report(db: Session, report_id: uuid.UUID) -> CommunityReport:
 
 @router.get("/official", response_model=list[OfficialAlertOut])
 def list_official_alerts(db: Session = Depends(get_db)) -> list[OfficialAlertOut]:
+    # Solo se incluyen las alertas que ya iniciaron y que no han expirado
     query = (
         select(OfficialAlert)
         .where(OfficialAlert.starts_at <= now(), or_(OfficialAlert.expires_at.is_(None), OfficialAlert.expires_at > now()))
@@ -122,10 +126,11 @@ def confirm_report(
     report_id: uuid.UUID, me: User = Depends(get_current_user), db: Session = Depends(get_db)
 ) -> CommunityReportOut:
     report = get_active_report(db, report_id)
+    # Un usuario no puede confirmar su propio reporte
     if report.user_id == me.id:
         raise HTTPException(status.HTTP_409_CONFLICT, detail="No puedes confirmar tu propio reporte")
     remove_vote(db, CommunityReportFlag, report.id, me.id)
-    # Confirming twice is ignored, so a retry after a network error is safe
+    # Una segunda confirmacion del mismo usuario se ignora, asi la operacion se puede repetir sin duplicar votos
     if not done_by(db, CommunityReportConfirmation, report.id, me.id):
         db.add(CommunityReportConfirmation(report_id=report.id, user_id=me.id))
     db.commit()

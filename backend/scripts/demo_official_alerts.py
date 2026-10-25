@@ -1,9 +1,9 @@
-"""Demo official alerts for presentations, until the real SMN / Protección Civil ingestion exists.
+"""Carga alertas oficiales de demostracion mientras no se integran las fuentes reales (SMN, Proteccion Civil).
 
-    python scripts/demo_official_alerts.py           # replaces the demo alerts with fresh ones
-    python scripts/demo_official_alerts.py --remove  # deletes the demo alerts
+    python scripts/demo_official_alerts.py           # reemplaza las alertas de demo por unas nuevas
+    python scripts/demo_official_alerts.py --remove  # elimina las alertas de demo
 
-Only touches official_alerts rows with type 'demo'; everything else in the database stays as is.
+Solo modifica las alertas con type 'demo'; el resto de la base de datos no se altera.
 """
 
 import sys
@@ -19,10 +19,12 @@ DEMO_TYPE = "demo"
 DAYS = 60
 
 
+# Genera el area de la alerta como un rectangulo (MULTIPOLYGON) a partir de sus limites
 def box(west: float, south: float, east: float, north: float) -> str:
     return f"SRID=4326;MULTIPOLYGON((({west} {south},{east} {south},{east} {north},{west} {north},{west} {south})))"
 
 
+# Alertas de ejemplo: fuente, titulo, descripcion, zona, severidad, area y minutos desde que iniciaron
 ALERTS = [
     ("Protección Civil NL", "Lluvias intensas en el área metropolitana",
      "Evita cruzar calles inundadas y mantente en un lugar seguro.",
@@ -43,6 +45,7 @@ def main() -> None:
     remove_only = "--remove" in sys.argv
     now = datetime.now(timezone.utc)
     with SessionLocal.begin() as s:
+        # Primero se eliminan las alertas de demo anteriores para no duplicarlas
         removed = s.execute(delete(OfficialAlert).where(OfficialAlert.type == DEMO_TYPE)).rowcount
         if not remove_only:
             s.add_all(

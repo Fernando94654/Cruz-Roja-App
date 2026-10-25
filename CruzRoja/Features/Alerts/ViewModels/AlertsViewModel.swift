@@ -15,10 +15,12 @@ final class AlertsViewModel {
         self.service = service
     }
 
+    // Reportes vigentes: no han expirado y no alcanzan el limite de marcas de falso
     var activeReports: [CommunityReport] {
         reports.filter { $0.expiresAt > Date() && $0.flags < CommunityReport.flagThreshold }
     }
 
+    // Aplica el filtro de categoria sobre los reportes vigentes; si es nil se muestran todos
     var filteredReports: [CommunityReport] {
         guard let selectedCategory else { return activeReports }
         return activeReports.filter { $0.category == selectedCategory }
@@ -49,7 +51,7 @@ final class AlertsViewModel {
         }
     }
 
-    // Optimistic: shows the vote right away, keeps what the server answers and reverts if the request fails
+    // Actualizacion optimista: el voto se refleja de inmediato y se reemplaza con la respuesta del servidor; si la peticion falla, se revierte
     private func vote(on id: UUID, _ change: (inout CommunityReport) -> Void,
                       send: () async throws -> CommunityReport) async {
         guard let i = reports.firstIndex(where: { $0.id == id }) else { return }
@@ -64,6 +66,7 @@ final class AlertsViewModel {
         }
     }
 
+    // Publica el reporte y lo agrega al inicio de la lista si el servidor lo acepta
     func publish(category: CommunityReportCategory, title: String) async -> Bool {
         let title = title.trimmingCharacters(in: .whitespacesAndNewlines)
         guard !title.isEmpty else { return false }
