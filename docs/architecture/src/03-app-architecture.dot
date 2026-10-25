@@ -1,0 +1,54 @@
+// Render with: dot -Tpng -Gdpi=200 03-app-architecture.dot -o ../png/03-app-architecture.png
+digraph app {
+  graph [rankdir=TB, fontname="Helvetica", nodesep=0.35, ranksep=0.65, pad=0.4, newrank=true,
+         label=<<b>Enlace Vital - iOS app architecture (SwiftUI + MVVM)</b>>, labelloc=t, fontsize=22];
+  node [shape=box, style="rounded,filled", fillcolor=white, color="#888888", fontname="Helvetica", fontsize=12, margin="0.18,0.10"];
+  edge [fontname="Helvetica", fontsize=10, color="#555555"];
+
+  subgraph cluster_app {
+    label=<<b>App/</b> - entry point and composition root>; fontsize=14; style="rounded,filled"; fillcolor="#FDECEE"; color="#C8102E";
+    main [label=<<b>CruzRojaApp</b><br/><font point-size="10">@main · WindowGroup</font>>];
+    root [label=<<b>RootView</b><br/><font point-size="10">TabView: Emergency · Family · Alerts · Learn · Profile</font>>];
+    container [label=<<b>AppContainer</b><br/><font point-size="10">.live (API services) · .preview (mocks)<br/>builds services once, creates each ViewModel</font>>, fillcolor="#FFF7F8"];
+  }
+
+  subgraph cluster_feature {
+    label=<<b>Features/&lt;Feature&gt;/</b> - one folder per feature (example: Emergency)>; fontsize=14; style="rounded,filled"; fillcolor="#EAF3FB"; color="#7AA7D6";
+    view [label=<<b>View</b> (Views/)<br/><font point-size="10">ReportView, EmergencyView, SummaryView<br/>SwiftUI, no business logic</font>>, fillcolor="#FFFFFF"];
+    vm [label=<<b>ViewModel</b> (ViewModels/)<br/><font point-size="10">EmergencyReportViewModel<br/>@MainActor @Observable · UI state + actions</font>>, fillcolor="#FFFFFF"];
+    model [label=<<b>Model</b> (Models/)<br/><font point-size="10">EmergencyReport, EmergencyRoute<br/>Codable, Sendable value types</font>>, fillcolor="#FFFFFF"];
+    subgraph cluster_services {
+      label=<<b>Services/</b>>; fontsize=12; style="rounded,dashed"; color="#7AA7D6";
+      proto [label=<<b>«protocol» service contracts</b><br/><font point-size="10">EmergencyReportServicing · ReportExtracting</font>>, fillcolor="#F4F9FF"];
+      apiimpl [label=<<b>EmergencyReportAPIService</b><br/><font point-size="10">real implementation</font>>];
+      mock [label=<<b>MockEmergencyReportService</b><br/><font point-size="10">previews, tests, demo mode</font>>];
+      ai [label=<<b>FallbackReportExtractor</b><br/><font point-size="10">FoundationModel → RuleBased</font>>];
+    }
+  }
+
+  subgraph cluster_core {
+    label=<<b>Core/</b> - shared infrastructure>; fontsize=14; style="rounded,filled"; fillcolor="#EEF7EE"; color="#6DBF6D";
+    net [label=<<b>Networking</b><br/><font point-size="10">APIClient (async URLSession)<br/>APIConfig · AuthToken (Keychain)</font>>];
+    corelist [label=<<b>Speech · Location · QR · Design · Demo · Logging</b><br/><font point-size="10">SpeechService, SpeechDictation, CoreLocationService,<br/>QRCodeGenerator, Theme, DemoMode, Log</font>>];
+  }
+
+  backend [label=<<b>Enlace Vital API</b><br/><font point-size="10">FastAPI · REST/JSON</font>>, shape=cylinder, fillcolor="#FFF4E5", color="#E0A84F"];
+  others [label=<<b>Other features, same structure</b><br/><font point-size="10">Alerts · Assistant · Auth · Family · Learn · MedicalProfile</font>>, style="rounded,dashed", fillcolor="#FFFFFF"];
+
+  main -> root;
+  main -> container [label="creates"];
+  root -> view [label="navigates"];
+  container -> vm [label="injects services", color="#C8102E", fontcolor="#C8102E"];
+  view -> vm [label="binds state /\ncalls actions"];
+  vm -> view [label="@Observable\nchanges", style=dashed];
+  vm -> proto [label="async calls"];
+  vm -> model [style=dashed, label="uses"];
+  proto -> apiimpl [arrowhead=empty, style=dashed, dir=back, arrowtail=empty, label="conforms"];
+  proto -> mock [arrowhead=empty, style=dashed, dir=back, arrowtail=empty];
+  proto -> ai [arrowhead=empty, style=dashed, dir=back, arrowtail=empty];
+  apiimpl -> net;
+  ai -> corelist [style=invis];
+  vm -> corelist [label="Dictating, LocationProviding", style=dashed];
+  net -> backend [label="HTTPS + Bearer JWT", color="#C8102E", penwidth=2];
+  { rank=same; view; others; }
+}

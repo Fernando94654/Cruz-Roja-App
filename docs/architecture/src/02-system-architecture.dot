@@ -1,0 +1,62 @@
+// Render with: dot -Tpng -Gdpi=200 02-system-architecture.dot -o ../png/02-system-architecture.png
+digraph system {
+  graph [rankdir=LR, fontname="Helvetica", nodesep=0.45, ranksep=1.0, pad=0.4, compound=true,
+         label=<<b>Enlace Vital - System architecture</b>>, labelloc=t, fontsize=22];
+  node [shape=box, style="rounded,filled", fillcolor=white, color="#888888", fontname="Helvetica", fontsize=12, margin="0.18,0.10"];
+  edge [fontname="Helvetica", fontsize=10, color="#555555"];
+
+  user [label="Citizen\n(iPhone user)", shape=ellipse, fillcolor="#FDECEE", color="#C8102E"];
+  operator [label="Cruz Roja operator\n(phone + browser)", shape=ellipse, fillcolor="#FDECEE", color="#C8102E"];
+
+  subgraph cluster_ios {
+    label=<<b>iPhone - SwiftUI app (iOS 18+)</b>>; fontsize=15; style="rounded,filled"; fillcolor="#EAF3FB"; color="#7AA7D6";
+    app [label=<<b>Enlace Vital app</b><br/><font point-size="10">SwiftUI · MVVM · Swift Concurrency</font>>, fillcolor="#FFFFFF"];
+    subgraph cluster_ondevice {
+      label="On-device frameworks"; fontsize=12; style="rounded,dashed"; color="#7AA7D6";
+      fm [label="Foundation Models\n(Apple Intelligence, iOS 26)\nreport extraction + summary"];
+      speech [label="Speech + AVFoundation\ndictation (es-MX) / voice guidance"];
+      loc [label="Core Location + MapKit\nposition, maps"];
+      sms [label="MessageUI\nSMS composer"];
+      store [label="Keychain + UserDefaults/caches\nJWT, session, profile, guides (offline)"];
+    }
+  }
+
+  subgraph cluster_cloud {
+    label=<<b>Backend</b>>; fontsize=15; style="rounded,filled"; fillcolor="#FFF4E5"; color="#E0A84F";
+    api [label=<<b>Enlace Vital API</b><br/><font point-size="10">Python 3.12 · FastAPI · Uvicorn<br/>SQLAlchemy 2 · Pydantic · JWT (HS256) · argon2<br/>Fernet encryption of medical data</font>>];
+    page [label=<<b>Operator page</b><br/><font point-size="10">GET /r/{token} · server-rendered HTML</font>>];
+  }
+
+  subgraph cluster_db {
+    label=<<b>Supabase (us-east-2)</b>>; fontsize=15; style="rounded,filled"; fillcolor="#EEF7EE"; color="#6DBF6D";
+    db [label=<<b>PostgreSQL + PostGIS</b><br/><font point-size="10">19 tables · Row Level Security<br/>Alembic migrations</font>>, shape=cylinder];
+  }
+
+  subgraph cluster_ext {
+    label=<<b>External services</b>>; fontsize=15; style="rounded,filled"; fillcolor="#F2F2F2"; color="#AAAAAA";
+    yt [label="YouTube\nlesson videos (WebKit embed)"];
+    osm [label="OpenStreetMap\nmap tiles on operator page"];
+    carrier [label="Cellular network\nSMS / phone call"];
+  }
+
+  subgraph cluster_dev {
+    label=<<b>Development</b>>; fontsize=15; style="rounded,dashed"; color="#AAAAAA";
+    gh [label="GitHub\nrepo + pull requests"];
+    docker [label="Docker Compose\nlocal PostGIS for dev + pytest\n(same schema via Alembic)"];
+  }
+
+  user -> app [label="uses"];
+  app -> fm [dir=none, style=dashed];
+  app -> speech [dir=none, style=dashed];
+  app -> loc [dir=none, style=dashed];
+  app -> sms [dir=none, style=dashed];
+  app -> store [dir=none, style=dashed];
+  app -> api [label="HTTPS · REST/JSON\nBearer JWT", lhead=cluster_cloud, ltail=cluster_ios, penwidth=2, color="#C8102E"];
+  api -> db [label="psycopg3 · TLS\nsession pooler", penwidth=2];
+  page -> db [style=invis];
+  sms -> carrier [label="share link"];
+  carrier -> operator [label="SMS / call"];
+  operator -> page [label="opens link"];
+  page -> osm [style=dashed];
+  app -> yt [style=dashed, ltail=cluster_ios];
+}
