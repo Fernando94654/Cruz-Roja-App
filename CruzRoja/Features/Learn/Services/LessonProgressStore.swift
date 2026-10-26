@@ -4,6 +4,7 @@ import Foundation
 struct LessonProgressStore {
     var defaults: UserDefaults = .standard
 
+    // Lessons marked completed on this device
     var completed: Set<UUID> {
         get { ids(forKey: Keys.completed) }
         nonmutating set { save(newValue, forKey: Keys.completed) }

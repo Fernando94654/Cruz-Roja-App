@@ -22,6 +22,7 @@ final class AppContainer {
     private let guidesService: GuidesServicing
     private let guideCache: GuideCache
 
+    // Receives every service; defaults to mocks so previews and tests need no server
     init(
         session: SessionStore,
         speech: SpeechSynthesizing,
@@ -120,14 +121,17 @@ final class AppContainer {
 
     // MARK: - ViewModels
 
+    // Sign-in screen
     func makeAuthViewModel() -> AuthViewModel {
         AuthViewModel(service: authService, session: session)
     }
 
+    // Medical profile screen, with its offline copy
     func makeMedicalProfileViewModel() -> MedicalProfileViewModel {
         MedicalProfileViewModel(service: medicalProfileService, cache: medicalProfileCache)
     }
 
+    // Emergency report; sending it dispatches the ambulance
     func makeEmergencyReportViewModel(report: EmergencyReport = EmergencyReport(),
                                       location: EmergencyLocation? = nil, shareURL: String? = nil) -> EmergencyReportViewModel {
         let cache = medicalProfileCache
@@ -152,6 +156,7 @@ final class AppContainer {
         return report.merging(RuleBasedReportExtractor().fields(from: EmergencyReport.demoDescription))
     }
 
+    // Assistant chat with the cached guides and the real microphone
     func makeFirstAidViewModel() -> FirstAidViewModel {
         var messages: [ChatMessage] = []
         if DemoMode.isActive("firstaid") {
@@ -162,22 +167,27 @@ final class AppContainer {
                                  guides: guideCache.load(), messages: messages)
     }
 
+    // Step-by-step voice guide
     func makeGuideViewModel(guide: FirstAidGuide) -> GuideViewModel {
         GuideViewModel(guide: guide, speech: speech, lessonsService: lessonsService)
     }
 
+    // Community alerts screen
     func makeAlertsViewModel() -> AlertsViewModel {
         AlertsViewModel(service: alertsService)
     }
 
+    // Family circle screen
     func makeFamilyViewModel() -> FamilyViewModel {
         FamilyViewModel(service: familyService, locationProvider: locationProvider)
     }
 
+    // Aprende lesson list with the user's progress
     func makeLearnViewModel() -> LearnViewModel {
         LearnViewModel(service: lessonsService, progress: lessonProgress, guides: guideCache.load())
     }
 
+    // One lesson, sharing the same progress as the list
     func makeLessonViewModel(lesson: Lesson) -> LessonViewModel {
         LessonViewModel(lesson: lesson, speech: speech, progress: lessonProgress)
     }

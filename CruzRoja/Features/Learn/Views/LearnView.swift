@@ -11,6 +11,7 @@ struct LearnView: View {
         _viewModel = State(initialValue: container.makeLearnViewModel())
     }
 
+    // Lesson list with progress, plus loading, error and empty states
     var body: some View {
         NavigationStack(path: $path) {
             List {
@@ -75,11 +76,13 @@ struct LessonThumbnail: View {
     let lesson: Lesson
     var guides = FirstAidGuide.bundled
 
+    // The related guide's icon, or a play icon
     private var icon: String {
         guard let guideID = lesson.guideID else { return "play.rectangle.fill" }
         return guides.first { $0.id == guideID }?.icon ?? "play.rectangle.fill"
     }
 
+    // Red card with the guide icon and a play badge
     var body: some View {
         GeometryReader { geometry in
             ZStack {

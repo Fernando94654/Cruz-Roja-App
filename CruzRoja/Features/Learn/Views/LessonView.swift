@@ -15,6 +15,7 @@ struct LessonView: View {
 
     private var lesson: Lesson { viewModel.lesson }
 
+    // Video, steps, completion button, read-aloud button and publisher
     var body: some View {
         let revision = playerViewModel.revision
         return ScrollView {
@@ -110,6 +111,7 @@ private struct CompletionButton: View {
     let isCompleted: Bool
     let action: () -> Void
 
+    // Green "Completada" when done, red "Marcar como completada" otherwise
     var body: some View {
         if isCompleted {
             Button(action: action) {

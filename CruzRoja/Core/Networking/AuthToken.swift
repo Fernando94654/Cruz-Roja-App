@@ -9,6 +9,7 @@ enum AuthToken {
         kSecAttrAccount as String: "auth-token",
     ]
 
+    // The saved token, or nil when signed out
     static var current: String? {
         var item = query
         item[kSecReturnData as String] = true
@@ -19,6 +20,7 @@ enum AuthToken {
         return String(data: data, encoding: .utf8)
     }
 
+    // Replaces the saved token
     static func save(_ token: String) {
         clear()
         var item = query
@@ -27,6 +29,7 @@ enum AuthToken {
         SecItemAdd(item as CFDictionary, nil)
     }
 
+    // Deletes the token on sign-out
     static func clear() {
         SecItemDelete(query as CFDictionary)
     }
