@@ -10,11 +10,13 @@ final class FallbackReportExtractor: ReportExtracting {
     // Holds a FoundationModelReportExtractor; typed loosely because it only exists on iOS 26
     private var model: ReportExtracting?
 
+    /// Loads the on-device model ahead of time when it is available.
     func prewarm() {
         Log.ai.info("Availability on prewarm: \(self.availabilityDescription(), privacy: .public)")
         if availableModel() != nil { model?.prewarm() }
     }
 
+    /// Fills the report with the model, falling back to keyword rules.
     func extract(_ text: String) async throws -> ExtractedFields {
         var reason = unavailableReason()
         Log.ai.info("Availability: \(self.availabilityDescription(), privacy: .public)")

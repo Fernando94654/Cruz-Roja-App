@@ -23,6 +23,7 @@ final class AmbulanceTracker {
         }
     }
 
+    /// Starts the simulated ambulance countdown.
     func request(seconds: Int = 480) {
         guard !isOnTheWay else { return }
         totalSeconds = seconds

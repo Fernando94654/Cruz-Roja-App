@@ -1,6 +1,7 @@
 import Foundation
 import Observation
 
+/// State and actions of the emergency report flow.
 @MainActor
 @Observable
 final class EmergencyReportViewModel {
@@ -72,6 +73,7 @@ final class EmergencyReportViewModel {
         fillMessage = nil
     }
 
+    /// Prepares the AI before the user asks for it.
     func prewarmAI() {
         extractor.prewarm()
     }
@@ -104,6 +106,7 @@ final class EmergencyReportViewModel {
         }
     }
 
+    /// Starts dictation, or stops it and fills the report.
     func toggleDictation() async {
         guard !isPreparingDictation else { return }
         if dictation.isListening {
@@ -139,6 +142,7 @@ final class EmergencyReportViewModel {
         }
     }
 
+    /// Gets the current location and address.
     func locate() async {
         guard !hasProvidedLocation else { return }
         guard !isLocating else { return }

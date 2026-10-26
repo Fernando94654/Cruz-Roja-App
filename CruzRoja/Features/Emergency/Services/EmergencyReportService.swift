@@ -1,5 +1,6 @@
 import Foundation
 
+/// Backend answer with the operator link.
 struct SentReport: Decodable, Sendable {
     let id: String
     let shareURL: String
@@ -10,7 +11,9 @@ struct SentReport: Decodable, Sendable {
     }
 }
 
+/// Sends a report to Cruz Roja.
 protocol EmergencyReportServicing: Sendable {
+    /// Stores the report and returns its operator link.
     func send(_ report: EmergencyReport, location: EmergencyLocation, summary: String, medicalSummary: String?) async throws -> SentReport
 }
 
