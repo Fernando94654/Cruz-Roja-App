@@ -7,6 +7,7 @@ final class AlertsViewModel {
     private(set) var officialAlerts: [OfficialAlert] = []
     private(set) var reports: [CommunityReport] = []
     var errorMessage: String?
+    var selectedCategory: CommunityReportCategory?
 
     private let service: AlertsServicing
 
@@ -15,7 +16,12 @@ final class AlertsViewModel {
     }
 
     var activeReports: [CommunityReport] {
-        reports.filter { $0.expiresAt > Date() }
+        reports.filter { $0.expiresAt > Date() && $0.flags < CommunityReport.flagThreshold }
+    }
+
+    var filteredReports: [CommunityReport] {
+        guard let selectedCategory else { return activeReports }
+        return activeReports.filter { $0.category == selectedCategory }
     }
 
     func load() async {
@@ -27,18 +33,33 @@ final class AlertsViewModel {
         }
     }
 
-    // Optimistic: counts the confirmation right away and reverts if the request fails
-    func confirm(_ report: CommunityReport) async {
-        guard let i = reports.firstIndex(where: { $0.id == report.id }), !reports[i].confirmedByMe else { return }
-        reports[i].confirmations += 1
-        reports[i].confirmedByMe = true
+    func toggleConfirmation(_ report: CommunityReport) async {
+        guard let current = reports.first(where: { $0.id == report.id }) else { return }
+        let on = !current.confirmedByMe
+        await vote(on: report.id, { $0.setConfirmed(on) }) {
+            on ? try await service.confirm(reportID: report.id) : try await service.unconfirm(reportID: report.id)
+        }
+    }
+
+    func toggleFalseFlag(_ report: CommunityReport) async {
+        guard let current = reports.first(where: { $0.id == report.id }) else { return }
+        let on = !current.flaggedByMe
+        await vote(on: report.id, { $0.setFlagged(on) }) {
+            on ? try await service.flag(reportID: report.id) : try await service.unflag(reportID: report.id)
+        }
+    }
+
+    // Optimistic: shows the vote right away, keeps what the server answers and reverts if the request fails
+    private func vote(on id: UUID, _ change: (inout CommunityReport) -> Void,
+                      send: () async throws -> CommunityReport) async {
+        guard let i = reports.firstIndex(where: { $0.id == id }) else { return }
+        let before = reports[i]
+        change(&reports[i])
         do {
-            try await service.confirm(reportID: report.id)
+            let saved = try await send()
+            if let j = reports.firstIndex(where: { $0.id == id }) { reports[j] = saved }
         } catch {
-            if let j = reports.firstIndex(where: { $0.id == report.id }) {
-                reports[j].confirmations -= 1
-                reports[j].confirmedByMe = false
-            }
+            if let j = reports.firstIndex(where: { $0.id == id }) { reports[j] = before }
             errorMessage = error.localizedDescription
         }
     }

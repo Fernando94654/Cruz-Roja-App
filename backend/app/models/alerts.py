@@ -63,3 +63,11 @@ class CommunityReportConfirmation(Base):
     report_id: Mapped[uuid.UUID] = mapped_column(ForeignKey("community_reports.id", ondelete="CASCADE"), primary_key=True)
     user_id: Mapped[uuid.UUID] = mapped_column(ForeignKey("users.id", ondelete="CASCADE"), primary_key=True)
     created_at: Mapped[datetime] = timestamp_now()
+
+
+class CommunityReportFlag(Base):
+    __tablename__ = "community_report_flags"
+
+    report_id: Mapped[uuid.UUID] = mapped_column(ForeignKey("community_reports.id", ondelete="CASCADE"), primary_key=True)
+    user_id: Mapped[uuid.UUID] = mapped_column(ForeignKey("users.id", ondelete="CASCADE"), primary_key=True)
+    created_at: Mapped[datetime] = timestamp_now()

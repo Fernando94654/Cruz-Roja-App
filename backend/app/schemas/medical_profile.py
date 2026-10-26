@@ -74,13 +74,40 @@ class MedicalProfileIn(BaseModel):
         return cleaned
 
 
+def iso_utc(value: datetime) -> str:
+    # ISO 8601 in UTC without microseconds, the format iOS parses as is
+    if value.tzinfo is None:
+        value = value.replace(tzinfo=timezone.utc)
+    return value.astimezone(timezone.utc).isoformat(timespec="seconds").replace("+00:00", "Z")
+
+
 class MedicalProfileOut(MedicalProfileIn):
     user_id: uuid.UUID
     updated_at: datetime
 
     @field_serializer("updated_at")
-    def iso_utc(self, value: datetime) -> str:
-        # ISO 8601 in UTC without microseconds, the format iOS parses as is
-        if value.tzinfo is None:
-            value = value.replace(tzinfo=timezone.utc)
-        return value.astimezone(timezone.utc).isoformat(timespec="seconds").replace("+00:00", "Z")
+    def serialize_updated_at(self, value: datetime) -> str:
+        return iso_utc(value)
+
+
+class DependentProfileIn(MedicalProfileIn):
+    """Profile of someone the user looks after: same fields plus how they are related."""
+
+    relationship: str = Field(min_length=1, max_length=60)
+
+    @field_validator("relationship")
+    @classmethod
+    def relationship_required(cls, value: str) -> str:
+        value = value.strip()
+        if not value:
+            raise ValueError("el parentesco es obligatorio")
+        return value
+
+
+class DependentProfileOut(DependentProfileIn):
+    id: uuid.UUID
+    updated_at: datetime
+
+    @field_serializer("updated_at")
+    def serialize_updated_at(self, value: datetime) -> str:
+        return iso_utc(value)
