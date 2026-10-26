@@ -1,6 +1,7 @@
 import MapKit
 import SwiftUI
 
+/// Main emergency screen with the report button.
 struct EmergencyView: View {
     let container: AppContainer
     @State private var path: [EmergencyRoute]
@@ -130,6 +131,7 @@ struct EmergencyView: View {
     }
 }
 
+/// Five-second countdown to cancel before reporting.
 struct CountdownView: View {
     var onFinish: () -> Void
     @Environment(\.dismiss) private var dismiss

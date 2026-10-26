@@ -1,6 +1,7 @@
 import MessageUI
 import SwiftUI
 
+/// Report review, sending and SMS to the operator.
 struct SummaryView: View {
     let viewModel: EmergencyReportViewModel
     @State private var showsComposer = false

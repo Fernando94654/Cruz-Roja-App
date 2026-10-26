@@ -2,6 +2,7 @@ import Foundation
 
 // Short summary for the operator built from the report fields
 enum ReportSummarizer {
+    /// Builds a one-line summary from the filled fields.
     static func summarize(_ report: EmergencyReport) -> String {
         var headline = report.reason.isEmpty ? "Emergencia" : report.reason
         if !report.place.isEmpty { headline += " en \(report.place.lowercased())" }

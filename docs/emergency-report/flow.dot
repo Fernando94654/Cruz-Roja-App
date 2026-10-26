@@ -1,0 +1,62 @@
+// Render with: dot -Tpng -Gdpi=200 flow.dot -o flow.png
+digraph flow {
+  graph [rankdir=TB, fontname="Helvetica", nodesep=0.3, ranksep=0.45, pad=0.4,
+         label=<<b>Emergency report - flow and files</b>>, labelloc=t, fontsize=22];
+  node [shape=box, style="rounded,filled", fillcolor=white, color="#888888", fontname="Helvetica", fontsize=12, margin="0.16,0.08"];
+  edge [fontname="Helvetica", fontsize=10, color="#555555"];
+
+  user [label="Person in an emergency", shape=ellipse, fillcolor="#FDECEE", color="#C8102E"];
+
+  subgraph cluster_ui {
+    label=<<b>1. Screens</b> - Views/>; fontsize=13; style="rounded,filled"; fillcolor="#EAF3FB"; color="#7AA7D6";
+    emergency [label=<<b>Report button + 5 s countdown</b><br/><font point-size="10" color="#C8102E">EmergencyView.swift</font>>];
+    report [label=<<b>Type or dictate "¿Qué está pasando?"</b><br/><font point-size="10" color="#C8102E">ReportView.swift</font>>];
+  }
+  summary [label=<<b>Review and send, SMS composer</b><br/><font point-size="10" color="#C8102E">Views/SummaryView.swift</font>>, fillcolor="#EAF3FB", color="#7AA7D6"];
+
+  vm [label=<<b>2. Logic</b><br/>fillFromDescription · toggleDictation · locate · send<br/><font point-size="10" color="#C8102E">ViewModels/EmergencyReportViewModel.swift</font>>, fillcolor="#FFF7F8", color="#C8102E", penwidth=2];
+
+  subgraph cluster_input {
+    label=<<b>3. Input</b> - Core/>; fontsize=13; style="rounded,filled"; fillcolor="#EEF7EE"; color="#6DBF6D";
+    dictation [label=<<b>Dictation (es-MX)</b><br/><font point-size="10" color="#C8102E">Speech/Dictating.swift<br/>Speech/SpeechDictation.swift</font>>];
+    gps [label=<<b>GPS + address</b><br/><font point-size="10" color="#C8102E">Location/LocationProviding.swift<br/>Location/CoreLocationService.swift</font>>];
+  }
+
+  subgraph cluster_ai {
+    label=<<b>4. Fill the report</b> - Services/>; fontsize=13; style="rounded,filled"; fillcolor="#FFF4E5"; color="#E0A84F";
+    fallback [label=<<b>Is Apple Intelligence available?</b><br/><font point-size="10" color="#C8102E">FallbackReportExtractor.swift</font>>, shape=box];
+    fm [label=<<b>On-device AI</b> (Foundation Models)<br/>fields + summary<br/><font point-size="10" color="#C8102E">FoundationModelReportExtractor.swift</font>>];
+    rules [label=<<b>Keyword rules</b><br/><font point-size="10" color="#C8102E">ReportExtractor.swift</font>>];
+    summarizer [label=<<b>Template summary</b> (when no AI summary)<br/><font point-size="10" color="#C8102E">ReportSummarizer.swift</font>>];
+  }
+
+  model [label=<<b>Report data</b><br/><font point-size="10" color="#C8102E">Models/EmergencyReport.swift</font>>, shape=note];
+
+  subgraph cluster_send {
+    label=<<b>5. Send</b> - Services/ + backend/>; fontsize=13; style="rounded,filled"; fillcolor="#F3EEFA"; color="#9E86C9";
+    service [label=<<b>POST /emergency-reports</b><br/><font point-size="10" color="#C8102E">Services/EmergencyReportService.swift</font>>];
+    api [label=<<b>Validate, save with PostGIS point,<br/>create random share_token</b><br/><font point-size="10" color="#C8102E">backend/app/routers/emergency_reports.py<br/>schemas/emergency_report.py · models/reports.py</font>>];
+    db [label="emergency_reports\n(Supabase Postgres)", shape=cylinder, fillcolor="#EEF7EE", color="#6DBF6D"];
+  }
+
+  operator [label=<<b>6. Operator</b><br/>SMS with summary + link → GET /r/{token}<br/>page with report, medical profile and map>, shape=ellipse, fillcolor="#FDECEE", color="#C8102E"];
+
+  user -> emergency;
+  emergency -> report [label="confirm"];
+  report -> vm [label="text / taps"];
+  vm -> dictation [dir=both, label="live text"];
+  vm -> gps [dir=both, label="location"];
+  vm -> fallback [label="extract(text)"];
+  fallback -> fm [label="yes"];
+  fallback -> rules [label="no / AI error"];
+  fm -> model [style=dashed, label="ExtractedFields"];
+  rules -> model [style=dashed];
+  model -> summarizer [style=dashed];
+
+  model -> summary [label="Continuar", weight=10];
+  summary -> service [label="send()"];
+  service -> api [label="HTTPS JSON", color="#C8102E", penwidth=2];
+  api -> db;
+  api -> service [style=dashed, label="share_url", constraint=false];
+  summary -> operator [label="SMS", color="#C8102E", penwidth=2];
+}

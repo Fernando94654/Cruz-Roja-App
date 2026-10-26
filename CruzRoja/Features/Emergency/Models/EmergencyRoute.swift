@@ -1,5 +1,6 @@
 import Foundation
 
+/// Screens reachable from the emergency flow.
 enum EmergencyRoute: Hashable {
     case report
     case summary

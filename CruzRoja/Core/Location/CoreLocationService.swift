@@ -1,5 +1,6 @@
 import CoreLocation
 
+/// Core Location wrapper that returns one fix with async/await.
 @MainActor
 final class CoreLocationService: NSObject, LocationProviding, CLLocationManagerDelegate {
     private let manager = CLLocationManager()
@@ -11,6 +12,7 @@ final class CoreLocationService: NSObject, LocationProviding, CLLocationManagerD
         manager.desiredAccuracy = kCLLocationAccuracyBest
     }
 
+    /// Requests one fix and reverse geocodes it.
     func current() async -> CurrentLocation? {
         guard continuation == nil, let location = await requestLocation() else { return nil }
         let placemark = try? await CLGeocoder().reverseGeocodeLocation(location, preferredLocale: Locale(identifier: "es_MX")).first

@@ -14,6 +14,7 @@ final class SpeechDictation: Dictating {
     @ObservationIgnored private var request: SFSpeechAudioBufferRecognitionRequest?
     @ObservationIgnored private var task: SFSpeechRecognitionTask?
 
+    /// Asks for permissions and streams the transcription.
     func start(onText: @escaping @MainActor (String) -> Void,
                onError: @escaping @MainActor (String) -> Void) async throws {
         guard startID == nil else { throw DictationError.alreadyListening }
@@ -68,6 +69,7 @@ final class SpeechDictation: Dictating {
         }
     }
 
+    /// Stops the audio engine and the recognition task.
     func stop() {
         startID = nil
         guard let engine = audioEngine else { return }

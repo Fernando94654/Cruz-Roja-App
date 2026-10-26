@@ -1,5 +1,6 @@
 import SwiftUI
 
+/// Bar with the ambulance status and time left.
 struct AmbulanceStatusBar: View {
     let ambulance: AmbulanceTracker
 
