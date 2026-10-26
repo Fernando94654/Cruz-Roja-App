@@ -25,6 +25,7 @@ final class GuideViewModel {
     var isFirstStep: Bool { stepIndex == 0 }
     var isLastStep: Bool { stepIndex == guide.steps.count - 1 }
 
+    // Mutes or unmutes the guide's voice
     var isMuted: Bool {
         get { speech.isMuted }
         set { speech.isMuted = newValue }

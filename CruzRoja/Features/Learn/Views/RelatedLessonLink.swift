@@ -6,6 +6,7 @@ struct RelatedLessonLink: View {
     let lessons: LearnViewModel
     let stopSpeech: () -> Void
 
+    // Link to the video, a loading state, or a retry when lessons failed
     var body: some View {
         VStack(alignment: .leading, spacing: 8) {
             if let lesson = lessons.lessons.first(where: { $0.guideID == guideID }), lesson.video != nil {
