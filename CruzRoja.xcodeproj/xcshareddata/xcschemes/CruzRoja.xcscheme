@@ -35,6 +35,7 @@
                BuildableIdentifier = "primary"
                BlueprintIdentifier = "A05B24D1308E7EC8005AE137"
                BuildableName = "CruzRojaTestsAprende.xctest"
+               BlueprintName = "CruzRojaTestsAprende"
                ReferencedContainer = "container:CruzRoja.xcodeproj">
             </BuildableReference>
          </TestableReference>

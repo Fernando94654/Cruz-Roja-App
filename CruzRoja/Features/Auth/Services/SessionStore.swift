@@ -12,8 +12,9 @@ final class SessionStore {
 
     init(defaults: UserDefaults = .standard) {
         self.defaults = defaults
-        isSignedIn = defaults.bool(forKey: Keys.signedIn)
-        email = defaults.string(forKey: Keys.email) ?? ""
+        // In presentation mode you start signed in as the sample user
+        isSignedIn = DemoMode.offline || defaults.bool(forKey: Keys.signedIn)
+        email = defaults.string(forKey: Keys.email) ?? (DemoMode.offline ? "maria@ejemplo.com" : "")
     }
 
     func signIn(email: String) {

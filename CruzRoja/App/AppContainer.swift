@@ -61,7 +61,20 @@ final class AppContainer {
         self.guideCache = guideCache
     }
 
-    static let live = AppContainer(
+    static let live = DemoMode.offline ? offline : online
+
+    // Same phone features (voice, GPS, dictation) but the data is sample data, works without internet
+    private static let offline = AppContainer(
+        session: SessionStore(),
+        speech: SpeechService(),
+        ambulance: AmbulanceTracker(),
+        locationProvider: CoreLocationService(),
+        dictation: { SpeechDictation() },
+        medicalProfileService: MockMedicalProfileService(),
+        reportExtractor: FallbackReportExtractor()
+    )
+
+    private static let online = AppContainer(
         session: SessionStore(),
         speech: SpeechService(),
         ambulance: AmbulanceTracker(),
