@@ -17,13 +17,15 @@ A person reports an emergency, for themselves or someone else, by typing or dict
 4. **Send.** `SummaryView` calls `send()`. `EmergencyReportAPIService` posts to `POST /emergency-reports`, attaching the medical profile when the report is for the user.
 5. **Store.** The API validates the body (`EmergencyReportIn`) and saves it in `emergency_reports` with a PostGIS point. It then creates a random `share_token` and returns `share_url`.
 6. **Operator.** The app opens the SMS composer with the summary and the link. `GET /r/{token}` shows the report, the medical profile and an OpenStreetMap map.
+7. **Ambulance.** After sending, `onSent()` starts `AmbulanceTracker`, and `AmbulanceStatusBar` shows the time left on top of the following screens.
 
 ## Files
 
 | Layer | Files |
 |---|---|
-| Model | `CruzRoja/Features/Emergency/Models/EmergencyReport.swift` |
-| Screens | `Views/EmergencyView.swift`, `Views/ReportView.swift`, `Views/SummaryView.swift` |
+| Model | `CruzRoja/Features/Emergency/Models/EmergencyReport.swift`, `Models/EmergencyRoute.swift` |
+| Screens | `Views/EmergencyView.swift`, `Views/ReportView.swift`, `Views/SummaryView.swift`, `Views/EmergencyDestinations.swift` (navigation) |
+| Ambulance | `Services/AmbulanceTracker.swift`, `Views/AmbulanceStatusBar.swift`, `Views/AmbulanceStatusModifier.swift` |
 | Logic | `ViewModels/EmergencyReportViewModel.swift` |
 | AI and rules | `Services/FallbackReportExtractor.swift`, `Services/FoundationModelReportExtractor.swift`, `Services/ReportExtractor.swift`, `Services/ReportSummarizer.swift` |
 | Network | `Services/EmergencyReportService.swift` |

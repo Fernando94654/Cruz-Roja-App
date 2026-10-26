@@ -14,6 +14,14 @@ digraph flow {
   }
   summary [label=<<b>Review and send, SMS composer</b><br/><font point-size="10" color="#C8102E">Views/SummaryView.swift</font>>, fillcolor="#EAF3FB", color="#7AA7D6"];
 
+  nav [label=<<b>Navigation between report screens</b><br/><font point-size="10" color="#C8102E">Models/EmergencyRoute.swift<br/>Views/EmergencyDestinations.swift</font>>, shape=box, style="rounded,dashed", fillcolor="#EAF3FB", color="#7AA7D6"];
+
+  subgraph cluster_amb {
+    label=<<b>7. Ambulance on the way</b>>; fontsize=13; style="rounded,filled"; fillcolor="#FDECEE"; color="#C8102E";
+    tracker [label=<<b>Simulated ambulance countdown</b><br/><font point-size="10" color="#C8102E">Services/AmbulanceTracker.swift</font>>];
+    bar [label=<<b>Status bar pinned on top of the screens</b><br/><font point-size="10" color="#C8102E">Views/AmbulanceStatusBar.swift<br/>Views/AmbulanceStatusModifier.swift</font>>];
+  }
+
   vm [label=<<b>2. Logic</b><br/>fillFromDescription · toggleDictation · locate · send<br/><font point-size="10" color="#C8102E">ViewModels/EmergencyReportViewModel.swift</font>>, fillcolor="#FFF7F8", color="#C8102E", penwidth=2];
 
   subgraph cluster_input {
@@ -42,7 +50,8 @@ digraph flow {
   operator [label=<<b>6. Operator</b><br/>SMS with summary + link → GET /r/{token}<br/>page with report, medical profile and map>, shape=ellipse, fillcolor="#FDECEE", color="#C8102E"];
 
   user -> emergency;
-  emergency -> report [label="confirm"];
+  emergency -> nav [label="confirm"];
+  nav -> report [label=".report"];
   report -> vm [label="text / taps"];
   vm -> dictation [dir=both, label="live text"];
   vm -> gps [dir=both, label="location"];
@@ -53,10 +62,12 @@ digraph flow {
   rules -> model [style=dashed];
   model -> summarizer [style=dashed];
 
-  model -> summary [label="Continuar", weight=10];
+  model -> summary [label="Continuar (.summary)", weight=10];
   summary -> service [label="send()"];
   service -> api [label="HTTPS JSON", color="#C8102E", penwidth=2];
   api -> db;
   api -> service [style=dashed, label="share_url", constraint=false];
   summary -> operator [label="SMS", color="#C8102E", penwidth=2];
+  service -> tracker [label="onSent()", style=dashed];
+  tracker -> bar;
 }
