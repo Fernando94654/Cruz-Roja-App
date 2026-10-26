@@ -38,6 +38,16 @@
                ReferencedContainer = "container:CruzRoja.xcodeproj">
             </BuildableReference>
          </TestableReference>
+         <TestableReference
+            skipped = "NO"
+            parallelizable = "YES">
+            <BuildableReference
+               BuildableIdentifier = "primary"
+               BlueprintIdentifier = "25428B94308ED9A6004D6B52"
+               BuildableName = "CruzRojaTestsPerfilMedico.xctest"
+               ReferencedContainer = "container:CruzRoja.xcodeproj">
+            </BuildableReference>
+         </TestableReference>
       </Testables>
    </TestAction>
    <LaunchAction
