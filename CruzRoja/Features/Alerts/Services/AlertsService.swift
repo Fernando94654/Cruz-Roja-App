@@ -1,5 +1,6 @@
 import Foundation
 
+// Operaciones que debe implementar cualquier servicio de alertas, ya sea la API o el de prueba
 protocol AlertsServicing: Sendable {
     func fetchOfficialAlerts() async throws -> [OfficialAlert]
     func fetchCommunityReports() async throws -> [CommunityReport]
@@ -10,7 +11,7 @@ protocol AlertsServicing: Sendable {
     func publish(category: CommunityReportCategory, title: String) async throws -> CommunityReport
 }
 
-// /alerts in backend/app/routers/alerts.py, reports know who I am by the sign-in token
+// Implementacion que consume la API /alerts; el usuario se identifica mediante el token de sesion
 struct AlertsAPIService: AlertsServicing {
     var client = APIClient()
     let locationProvider: any LocationProviding & Sendable
@@ -23,6 +24,7 @@ struct AlertsAPIService: AlertsServicing {
         }
     }
 
+    // Estructuras para decodificar el JSON del servidor y convertirlo a los modelos de la app
     private struct OfficialAlertDTO: Decodable {
         let id: UUID
         let source: String
@@ -104,6 +106,7 @@ struct AlertsAPIService: AlertsServicing {
         try await client.delete(path("reports/\(id(reportID))/flag"), as: ReportDTO.self).report
     }
 
+    // Se obtiene la ubicacion actual antes de enviar el reporte; sin ubicacion no se puede publicar
     func publish(category: CommunityReportCategory, title: String) async throws -> CommunityReport {
         guard let coordinate = await locationProvider.current()?.coordinate else { throw PublishError.noLocation }
         let body = ReportBody(type: category.rawValue, title: title,
@@ -120,8 +123,9 @@ struct AlertsAPIService: AlertsServicing {
     }
 }
 
+// Servicio con datos locales para previews y modo demo, no necesita el servidor
 actor MockAlertsService: AlertsServicing {
-    // Community reports expire a few hours after being published
+    // Tiempo de vida de un reporte antes de expirar
     static let reportLifetime: TimeInterval = 4 * 3600
 
     private var reports = CommunityReport.samples()

@@ -4,7 +4,7 @@ Lets users mark a neighbor report as false, once per user per report,
 same shape as community_report_confirmations.
 
 Revision ID: 0009
-Revises: 0008
+Revises: 0008 
 Create Date: 2026-10-23 10:00:00
 """
 from alembic import op
