@@ -10,15 +10,14 @@ final class GuideViewModel {
     // Toggles on every compression beat so the view can pulse and vibrate
     private(set) var beat = false
 
-    let ambulance: AmbulanceTracker
     let lessons: LearnViewModel
     private let speech: SpeechSynthesizing
     private var isActive = true
 
-    init(guide: FirstAidGuide, speech: SpeechSynthesizing, ambulance: AmbulanceTracker, lessonsService: LessonsServicing) {
+    // Owns its own lesson list so the related video loads independently
+    init(guide: FirstAidGuide, speech: SpeechSynthesizing, lessonsService: LessonsServicing) {
         self.guide = guide
         self.speech = speech
-        self.ambulance = ambulance
         lessons = LearnViewModel(service: lessonsService)
     }
 
@@ -31,26 +30,30 @@ final class GuideViewModel {
         set { speech.isMuted = newValue }
     }
 
+    // Called when the guide opens: steps may speak again
     func start() {
         isActive = true
-        ambulance.request()
     }
 
+    // Called when leaving: silences speech and stops timers
     func stop() {
         isActive = false
         speech.stop()
     }
 
+    // Moves to the next step
     func next() {
         guard !isLastStep else { return }
         stepIndex += 1
     }
 
+    // Moves to the previous step
     func previous() {
         guard !isFirstStep else { return }
         stepIndex -= 1
     }
 
+    // Reads the current instruction again
     func repeatInstruction() {
         speech.speak(step.instruction)
     }
@@ -68,18 +71,13 @@ final class GuideViewModel {
         if secondsLeft == 0 { speech.speak("Tiempo cumplido.") }
     }
 
+    // Ticks at the step's compression rate until the step changes
     func runBeat() async {
         guard let rate = step.rate else { return }
         while !Task.isCancelled {
             try? await Task.sleep(for: .seconds(60.0 / Double(rate)))
             guard !Task.isCancelled, isActive else { return }
             beat.toggle()
-        }
-    }
-
-    func announceArrivalIfNeeded() {
-        if isActive && ambulance.hasArrived {
-            speech.speak("La ambulancia llegó. Cuéntale a los paramédicos qué pasó y qué hiciste.")
         }
     }
 }

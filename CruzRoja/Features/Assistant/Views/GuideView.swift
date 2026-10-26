@@ -3,6 +3,7 @@ import SwiftUI
 struct GuideView: View {
     @State private var viewModel: GuideViewModel
 
+    // Keeps the view model alive across view updates
     init(viewModel: GuideViewModel) {
         _viewModel = State(initialValue: viewModel)
     }
@@ -11,8 +12,6 @@ struct GuideView: View {
 
     var body: some View {
         VStack(alignment: .leading, spacing: 20) {
-            AmbulanceStatusBar(ambulance: viewModel.ambulance)
-
             VStack(alignment: .leading, spacing: 8) {
                 Text("Paso \(viewModel.stepIndex + 1) de \(viewModel.guide.steps.count)")
                     .font(.subheadline.weight(.medium))
@@ -86,7 +85,6 @@ struct GuideView: View {
         }
         .task(id: viewModel.stepIndex) { await viewModel.runStep() }
         .task(id: viewModel.stepIndex) { await viewModel.runBeat() }
-        .onChange(of: viewModel.ambulance.hasArrived) { viewModel.announceArrivalIfNeeded() }
         .onAppear { viewModel.start() }
         .onDisappear { viewModel.stop() }
         .sensoryFeedback(.impact(weight: .heavy), trigger: viewModel.beat)
@@ -125,5 +123,8 @@ struct GuideView: View {
 }
 
 #Preview {
-    NavigationStack { GuideView(viewModel: AppContainer.preview.makeGuideViewModel(guide: FirstAidGuide.catalog[0])) }
+    let container = AppContainer.preview
+    GuidesRefreshed(container: container) {
+        NavigationStack { GuideView(viewModel: container.makeGuideViewModel(guide: container.guides[0])) }
+    }
 }

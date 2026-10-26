@@ -7,6 +7,7 @@ final class AppContainer {
     let speech: SpeechSynthesizing
     let ambulance: AmbulanceTracker
     let locationProvider: LocationProviding
+    let lessonProgress: LessonProgress
     private let dictationFactory: @MainActor () -> Dictating
 
     private let authService: AuthServicing
@@ -18,6 +19,8 @@ final class AppContainer {
     private let alertsService: AlertsServicing
     private let familyService: FamilyServicing
     private let lessonsService: LessonsServicing
+    private let guidesService: GuidesServicing
+    private let guideCache: GuideCache
 
     init(
         session: SessionStore,
@@ -30,10 +33,14 @@ final class AppContainer {
         medicalProfileCache: MedicalProfileCache = MedicalProfileCache(),
         emergencyReportService: EmergencyReportServicing = MockEmergencyReportService(),
         reportExtractor: ReportExtracting? = nil,
-        firstAidAssistant: FirstAidAssisting = KeywordFirstAidAssistant(),
+        firstAidAssistant: FirstAidAssisting? = nil,
         alertsService: AlertsServicing = MockAlertsService(),
         familyService: FamilyServicing = MockFamilyService(),
-        lessonsService: LessonsServicing = MockLessonsService()
+        lessonsService: LessonsServicing = MockLessonsService(),
+        lessonProgressService: LessonProgressServicing = MockLessonProgressService(),
+        lessonProgressStore: LessonProgressStore = LessonProgressStore(),
+        guidesService: GuidesServicing = MockGuidesService(),
+        guideCache: GuideCache = GuideCache()
     ) {
         self.session = session
         self.speech = speech
@@ -45,10 +52,13 @@ final class AppContainer {
         self.medicalProfileCache = medicalProfileCache
         self.emergencyReportService = emergencyReportService
         self.reportExtractor = reportExtractor ?? RuleBasedReportExtractor()
-        self.firstAidAssistant = firstAidAssistant
+        self.firstAidAssistant = firstAidAssistant ?? KeywordFirstAidAssistant(guides: { guideCache.load() })
         self.alertsService = alertsService
         self.familyService = familyService
         self.lessonsService = lessonsService
+        self.lessonProgress = LessonProgress(service: lessonProgressService, store: lessonProgressStore)
+        self.guidesService = guidesService
+        self.guideCache = guideCache
     }
 
     static let live = DemoMode.offline ? offline : online
@@ -76,7 +86,9 @@ final class AppContainer {
         reportExtractor: FallbackReportExtractor(),
         alertsService: DemoMode.isActive("alerts") ? MockAlertsService() : AlertsAPIService(locationProvider: CoreLocationService()),
         familyService: DemoMode.isActive("family") ? MockFamilyService() : FamilyAPIService(),
-        lessonsService: LessonsAPIService()
+        lessonsService: LessonsAPIService(),
+        lessonProgressService: DemoMode.isActive("learn", "lesson") ? MockLessonProgressService() : LessonProgressAPIService(),
+        guidesService: GuidesAPIService()
     )
 
     static let preview = AppContainer(
@@ -91,8 +103,20 @@ final class AppContainer {
         dictation: { SpeechDictation() },
         medicalProfileService: MockMedicalProfileService(),
         medicalProfileCache: MedicalProfileCache(directory: FileManager.default.temporaryDirectory),
-        lessonsService: LessonsAPIService()
+        lessonsService: LessonsAPIService(),
+        lessonProgressService: LessonProgressAPIService(),
+        lessonProgressStore: LessonProgressStore(defaults: UserDefaults(suiteName: "preview") ?? .standard),
+        guidesService: GuidesAPIService(),
+        guideCache: GuideCache(directory: FileManager.default.temporaryDirectory)
     )
+
+    var guides: [FirstAidGuide] { guideCache.load() }
+
+    // Keeps the guides cached for offline use; on failure the last copy (or the bundled one) stays
+    func refreshGuides() async {
+        guard let guides = try? await guidesService.fetchGuides() else { return }
+        guideCache.save(guides)
+    }
 
     // MARK: - ViewModels
 
@@ -107,6 +131,7 @@ final class AppContainer {
     func makeEmergencyReportViewModel(report: EmergencyReport = EmergencyReport(),
                                       location: EmergencyLocation? = nil, shareURL: String? = nil) -> EmergencyReportViewModel {
         let cache = medicalProfileCache
+        let ambulance = ambulance
         return EmergencyReportViewModel(
             report: report,
             location: location,
@@ -115,7 +140,8 @@ final class AppContainer {
             extractor: reportExtractor,
             locationProvider: locationProvider,
             dictation: dictationFactory(),
-            medicalSummary: { cache.load()?.reportSummary }
+            medicalSummary: { cache.load()?.reportSummary },
+            onSent: { ambulance.request() }
         )
     }
 
@@ -131,11 +157,13 @@ final class AppContainer {
         if DemoMode.isActive("firstaid") {
             messages = [.user(UUID(), "Me corté y sangra mucho"), .assistant(KeywordFirstAidAssistant().search("sangra"))]
         }
-        return FirstAidViewModel(assistant: firstAidAssistant, speech: speech, ambulance: ambulance, lessonsService: lessonsService, messages: messages)
+        return FirstAidViewModel(assistant: firstAidAssistant, speech: speech, dictation: dictationFactory(),
+                                 lessonsService: lessonsService,
+                                 guides: guideCache.load(), messages: messages)
     }
 
     func makeGuideViewModel(guide: FirstAidGuide) -> GuideViewModel {
-        GuideViewModel(guide: guide, speech: speech, ambulance: ambulance, lessonsService: lessonsService)
+        GuideViewModel(guide: guide, speech: speech, lessonsService: lessonsService)
     }
 
     func makeAlertsViewModel() -> AlertsViewModel {
@@ -147,10 +175,10 @@ final class AppContainer {
     }
 
     func makeLearnViewModel() -> LearnViewModel {
-        LearnViewModel(service: lessonsService)
+        LearnViewModel(service: lessonsService, progress: lessonProgress, guides: guideCache.load())
     }
 
     func makeLessonViewModel(lesson: Lesson) -> LessonViewModel {
-        LessonViewModel(lesson: lesson, speech: speech)
+        LessonViewModel(lesson: lesson, speech: speech, progress: lessonProgress)
     }
 }

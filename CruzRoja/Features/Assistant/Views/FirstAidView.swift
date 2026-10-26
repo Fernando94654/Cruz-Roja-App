@@ -4,6 +4,7 @@ struct FirstAidView: View {
     @State private var viewModel: FirstAidViewModel
     @FocusState private var isInputFocused: Bool
 
+    // Keeps the view model alive across view updates
     init(viewModel: FirstAidViewModel) {
         _viewModel = State(initialValue: viewModel)
     }
@@ -13,8 +14,6 @@ struct FirstAidView: View {
             ScrollViewReader { proxy in
                 ScrollView {
                     VStack(alignment: .leading, spacing: 16) {
-                        AmbulanceStatusBar(ambulance: viewModel.ambulance)
-
                         if viewModel.messages.isEmpty {
                             intro
                         }
@@ -102,6 +101,7 @@ struct FirstAidView: View {
         }
     }
 
+    // Draws a user message or an assistant answer card
     @ViewBuilder
     private func bubble(_ message: ChatMessage) -> some View {
         switch message {
@@ -129,27 +129,38 @@ struct FirstAidView: View {
                 .onSubmit { send(viewModel.draft) }
 
             Button {
-                if viewModel.hasDraft {
+                if viewModel.hasDraft && !viewModel.isListening {
                     send(viewModel.draft)
                 } else {
                     isInputFocused = false
-                    Task { await viewModel.dictate() }
+                    Task { await viewModel.toggleDictation() }
                 }
             } label: {
-                Image(systemName: viewModel.hasDraft ? "arrow.up" : viewModel.isListening ? "waveform" : "mic.fill")
+                Image(systemName: viewModel.isListening ? "waveform" : viewModel.hasDraft ? "arrow.up" : "mic.fill")
                     .font(.title3.weight(.semibold))
                     .foregroundStyle(.white)
                     .frame(width: 46, height: 46)
                     .background(viewModel.isListening ? Color.black : Color.brandRed, in: Circle())
                     .symbolEffect(.variableColor.iterative, isActive: viewModel.isListening)
             }
-            .disabled(viewModel.isListening || viewModel.isThinking)
+            .disabled(viewModel.isPreparingDictation || viewModel.isThinking)
+            .accessibilityLabel(viewModel.isListening ? "Terminar y enviar" : viewModel.hasDraft ? "Enviar" : "Dictar")
         }
         .padding(.horizontal)
         .padding(.vertical, 10)
+        .overlay(alignment: .top) {
+            if let error = viewModel.dictationError {
+                Text(error)
+                    .font(.caption)
+                    .foregroundStyle(.secondary)
+                    .padding(.horizontal)
+                    .offset(y: -18)
+            }
+        }
         .background(.bar)
     }
 
+    // Hides the keyboard and sends the text to the assistant
     private func send(_ text: String) {
         isInputFocused = false
         Task { await viewModel.send(text) }
@@ -200,8 +211,10 @@ struct AnswerCard: View {
 
 #Preview {
     let container = AppContainer.preview
-    NavigationStack {
-        FirstAidView(viewModel: container.makeFirstAidViewModel())
-            .emergencyDestinations(report: container.makeEmergencyReportViewModel(), container: container)
+    GuidesRefreshed(container: container) {
+        NavigationStack {
+            FirstAidView(viewModel: container.makeFirstAidViewModel())
+                .emergencyDestinations(report: container.makeEmergencyReportViewModel(), container: container)
+        }
     }
 }

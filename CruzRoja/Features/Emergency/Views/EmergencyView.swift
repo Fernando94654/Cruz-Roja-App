@@ -17,6 +17,8 @@ struct EmergencyView: View {
             report: prefilled ? container.demoReport() : EmergencyReport(),
             shareURL: DemoMode.isActive("sent") ? "http://localhost:8000/r/demo" : nil
         ))
+        // These demos open the first-aid screens without sending a report
+        if DemoMode.isActive("firstaid", "guide") { container.ambulance.request() }
     }
 
     private static var demoPath: [EmergencyRoute] {
@@ -24,7 +26,7 @@ struct EmergencyView: View {
         case "report", "vitals": [.report]
         case "summary", "sent": [.report, .summary]
         case "firstaid": [.report, .summary, .firstAid]
-        case "guide": [.report, .summary, .firstAid, .guide(FirstAidGuide.catalog[0])]
+        case "guide": [.report, .summary, .firstAid, .guide(FirstAidGuide.bundled[0])]
         default: []
         }
     }

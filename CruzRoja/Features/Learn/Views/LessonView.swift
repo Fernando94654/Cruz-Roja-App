@@ -6,6 +6,7 @@ struct LessonView: View {
     @Environment(\.scenePhase) private var scenePhase
     let autoplay: Bool
 
+    // Pairs the lesson with its YouTube player session
     init(viewModel: LessonViewModel, autoplay: Bool = false) {
         _viewModel = State(initialValue: viewModel)
         _playerViewModel = State(initialValue: LessonPlayerViewModel(lesson: viewModel, makePlayer: YouTubePlayerController.init))
@@ -68,6 +69,12 @@ struct LessonView: View {
                     }
                 }
 
+                if viewModel.progress != nil {
+                    CompletionButton(isCompleted: viewModel.isCompleted) {
+                        Task { await viewModel.toggleCompletion() }
+                    }
+                }
+
                 Button {
                     playerViewModel.toggleSpeech()
                 } label: {
@@ -95,6 +102,30 @@ struct LessonView: View {
         }
         .onChange(of: scenePhase) {
             playerViewModel.scenePhaseChanged(isActive: scenePhase == .active)
+        }
+    }
+}
+
+private struct CompletionButton: View {
+    let isCompleted: Bool
+    let action: () -> Void
+
+    var body: some View {
+        if isCompleted {
+            Button(action: action) {
+                Label("Completada", systemImage: "checkmark.circle.fill")
+                    .frame(maxWidth: .infinity)
+            }
+            .buttonStyle(.bordered)
+            .tint(.green)
+            .accessibilityHint("Toca para marcarla como no completada")
+        } else {
+            Button(action: action) {
+                Text("Marcar como completada")
+                    .frame(maxWidth: .infinity)
+            }
+            .buttonStyle(.borderedProminent)
+            .tint(Color.brandRed)
         }
     }
 }

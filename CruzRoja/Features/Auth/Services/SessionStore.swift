@@ -26,6 +26,8 @@ final class SessionStore {
 
     func signOut() {
         AuthToken.clear()
+        // The server keeps the progress; the next person on this phone shouldn't see it
+        LessonProgressStore(defaults: defaults).clear()
         isSignedIn = false
         defaults.set(false, forKey: Keys.signedIn)
     }

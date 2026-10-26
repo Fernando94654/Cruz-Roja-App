@@ -5,10 +5,12 @@ import WebKit
 final class YouTubePlayerController: LessonVideoPlayback {
     weak var webView: WKWebView?
 
+    // Pauses whatever the web view is playing
     func pause() {
         webView?.pauseAllMediaPlayback(completionHandler: nil)
     }
 
+    // Stops playback and blanks the page so the video unloads
     func stop() {
         webView?.pauseAllMediaPlayback(completionHandler: nil)
         webView?.stopLoading()
@@ -42,10 +44,12 @@ struct YouTubePlayer: UIViewRepresentable {
     let onLoad: @MainActor () -> Void
     let onFailure: @MainActor () -> Void
 
+    // Forwards web view load and failure events
     func makeCoordinator() -> Coordinator {
         Coordinator(onLoad: onLoad, onFailure: onFailure)
     }
 
+    // Creates the web view and loads YouTube's embed page
     func makeUIView(context: Context) -> WKWebView {
         let configuration = WKWebViewConfiguration()
         configuration.allowsInlineMediaPlayback = true
@@ -76,8 +80,10 @@ struct YouTubePlayer: UIViewRepresentable {
         return webView
     }
 
+    // Nothing to update; a new video gets a new view
     func updateUIView(_ uiView: WKWebView, context: Context) {}
 
+    // Unloads the video when SwiftUI removes the view
     static func dismantleUIView(_ uiView: WKWebView, coordinator: Coordinator) {
         coordinator.isActive = false
         uiView.navigationDelegate = nil
@@ -91,16 +97,19 @@ struct YouTubePlayer: UIViewRepresentable {
         let onFailure: @MainActor () -> Void
         var isActive = true
 
+        // Keeps the callbacks for load and failure
         init(onLoad: @escaping @MainActor () -> Void, onFailure: @escaping @MainActor () -> Void) {
             self.onLoad = onLoad
             self.onFailure = onFailure
         }
 
+        // The embed page finished loading
         func webView(_ webView: WKWebView, didFinish navigation: WKNavigation!) {
             guard isActive else { return }
             onLoad()
         }
 
+        // Treats an HTTP error on the main page as a failure
         func webView(_ webView: WKWebView, decidePolicyFor navigationResponse: WKNavigationResponse,
                      decisionHandler: @escaping (WKNavigationResponsePolicy) -> Void) {
             if navigationResponse.isForMainFrame,
@@ -113,10 +122,12 @@ struct YouTubePlayer: UIViewRepresentable {
             }
         }
 
+        // Load failures and a crashed web process all show the fallback
         func webView(_ webView: WKWebView, didFailProvisionalNavigation navigation: WKNavigation!, withError error: Error) { fail() }
         func webView(_ webView: WKWebView, didFail navigation: WKNavigation!, withError error: Error) { fail() }
         func webViewWebContentProcessDidTerminate(_ webView: WKWebView) { fail() }
 
+        // Reports a failure unless the view is already gone
         private func fail() {
             guard isActive else { return }
             onFailure()

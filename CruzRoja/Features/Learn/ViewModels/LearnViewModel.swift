@@ -9,12 +9,20 @@ final class LearnViewModel {
     private(set) var isLoading = false
     private(set) var hasLoaded = false
 
+    let progress: LessonProgress?
+    // For the lesson thumbnails' icons
+    let guides: [FirstAidGuide]
+
     private let service: LessonsServicing
 
-    init(service: LessonsServicing) {
+    // Progress is optional so the emergency screens can reuse the lesson list
+    init(service: LessonsServicing, progress: LessonProgress? = nil, guides: [FirstAidGuide] = FirstAidGuide.bundled) {
         self.service = service
+        self.progress = progress
+        self.guides = guides
     }
 
+    // Fetches the lessons, shows an error on failure and syncs progress on success
     func load() async {
         guard !isLoading else { return }
         isLoading = true
@@ -27,6 +35,8 @@ final class LearnViewModel {
             lessons = fetched
             hasLoaded = true
             errorMessage = nil
+            // Each visit pushes progress saved offline or before signing in
+            await progress?.sync()
         } catch is CancellationError {
             return
         } catch {

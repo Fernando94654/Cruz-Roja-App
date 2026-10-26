@@ -1,17 +1,9 @@
 import Foundation
 
-struct SourceExcerpt: Identifiable, Hashable, Sendable {
-    let id = UUID()
-    let document: String
-    let page: Int
-    let excerpt: String
-}
-
 struct AssistantAnswer: Identifiable, Hashable, Sendable {
     let id = UUID()
     let text: String
     let guide: FirstAidGuide?
-    let sources: [SourceExcerpt]
 }
 
 enum ChatMessage: Identifiable, Hashable, Sendable {
