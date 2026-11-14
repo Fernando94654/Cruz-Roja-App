@@ -49,3 +49,7 @@ uv run pytest
 ```
 
 Synthetic compressions at 80 to 140 per minute check the rate (within 5%) and the count, also with body drift, torso length jitter, detection gaps and landmark spikes. They also cover pauses, the arm angle and the feedback priority.
+
+## iOS version
+
+`CruzRoja/Features/CPRCoach/` is the iPhone port. `CPRMetrics.swift` mirrors `metrics.py` (same thresholds; same counts on the recorded demos), Apple Vision's `VNDetectHumanBodyPoseRequest` replaces MediaPipe, and the screen opens from the emergency summary ("Coach de RCP con la cámara"). The simulator has no camera, so it uses a synthetic rescuer at 110 per minute. Tests: `CruzRojaTestsAprende/CPRCoachTests.swift`.
