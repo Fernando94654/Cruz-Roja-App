@@ -15,6 +15,21 @@ private actor FailingVoteService: AlertsServicing {
     }
 }
 
+// Servicio que agrega a los reportes de ejemplo uno que ya expiro, para probar que deja de mostrarse
+private actor ExpiredReportService: AlertsServicing {
+    static let expired = CommunityReport(category: .fire, title: "Humo en el parque",
+                                         confirmations: 1, expiresAt: Date().addingTimeInterval(-60))
+    func fetchOfficialAlerts() async throws -> [OfficialAlert] { OfficialAlert.samples() }
+    func fetchCommunityReports() async throws -> [CommunityReport] { CommunityReport.samples() + [Self.expired] }
+    func confirm(reportID: UUID) async throws -> CommunityReport { throw APIError.offline }
+    func unconfirm(reportID: UUID) async throws -> CommunityReport { throw APIError.offline }
+    func flag(reportID: UUID) async throws -> CommunityReport { throw APIError.offline }
+    func unflag(reportID: UUID) async throws -> CommunityReport { throw APIError.offline }
+    func publish(category: CommunityReportCategory, title: String) async throws -> CommunityReport {
+        throw APIError.offline
+    }
+}
+
 @MainActor
 struct CruzRojaTestsAlertas {
     // Crea el ViewModel con el servicio de prueba y carga los datos de ejemplo
@@ -99,6 +114,15 @@ struct CruzRojaTestsAlertas {
         #expect(abs(nuevo.expiresAt.timeIntervalSinceNow - 4 * 3600) < 60)
 
         #expect(await viewModel.publish(category: .fire, title: "   ") == false)
+    }
+
+    @Test("Un reporte que ya expiro deja de mostrarse")
+    func expiredReportIsHidden() async {
+        let viewModel = AlertsViewModel(service: ExpiredReportService())
+        await viewModel.load()
+        #expect(viewModel.reports.contains { $0.id == ExpiredReportService.expired.id })
+        #expect(!viewModel.activeReports.contains { $0.id == ExpiredReportService.expired.id })
+        #expect(viewModel.activeReports.count == 3)
     }
 
     @Test("Si el servidor falla al votar, el voto se revierte y se muestra un error")
