@@ -1,6 +1,7 @@
 """Endpoints de alertas oficiales y reportes de vecinos.
 
-GET    /alerts/official                     Alertas oficiales vigentes (SMN, Proteccion Civil), solo lectura
+GET    /alerts/official                     Alertas oficiales vigentes (SMN, Proteccion Civil), solo lectura;
+                                             cada SYNC_MINUTES importa en segundo plano los avisos nuevos del SMN
 GET    /alerts/reports                      Reportes vigentes que no alcanzan el limite de marcas de falso
 POST   /alerts/reports                      Publica un reporte que expira despues de REPORT_HOURS
 POST   /alerts/reports/{report_id}/confirm  Confirma el reporte de otro usuario
@@ -15,10 +16,11 @@ Las alertas oficiales solo las registra el sistema y nunca se expone quien publi
 import uuid
 from datetime import datetime, timedelta, timezone
 
-from fastapi import APIRouter, Depends, HTTPException, status
+from fastapi import APIRouter, BackgroundTasks, Depends, HTTPException, status
 from sqlalchemy import delete, func, or_, select
 from sqlalchemy.orm import Session
 
+from app import smn_alerts
 from app.auth import get_current_user
 from app.deps import get_db
 from app.models import CommunityReport, CommunityReportConfirmation, OfficialAlert, User
@@ -72,7 +74,9 @@ def get_active_report(db: Session, report_id: uuid.UUID) -> CommunityReport:
 
 
 @router.get("/official", response_model=list[OfficialAlertOut])
-def list_official_alerts(db: Session = Depends(get_db)) -> list[OfficialAlertOut]:
+def list_official_alerts(background: BackgroundTasks, db: Session = Depends(get_db)) -> list[OfficialAlertOut]:
+    # Se responde con lo que ya esta guardado y despues se buscan avisos nuevos del SMN, asi la app no espera
+    background.add_task(smn_alerts.sync_if_due)
     # Solo se incluyen las alertas que ya iniciaron y que no han expirado
     query = (
         select(OfficialAlert)
