@@ -39,6 +39,9 @@ struct SummaryView: View {
                     NavigationLink(value: EmergencyRoute.firstAid) {
                         Label("Ver instrucciones de primeros auxilios", systemImage: "bandage")
                     }
+                    NavigationLink(value: EmergencyRoute.cprCoach) {
+                        Label("Coach de RCP con la cámara", systemImage: "camera.viewfinder")
+                    }
                 }
             }
 

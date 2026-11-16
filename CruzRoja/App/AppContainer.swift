@@ -167,6 +167,16 @@ final class AppContainer {
                                  guides: guideCache.load(), messages: messages)
     }
 
+    // Camera CPR coach; the simulator has no camera, so it gets a synthetic rescuer
+    func makeCPRCoachViewModel() -> CPRCoachViewModel {
+        #if targetEnvironment(simulator)
+        let provider: BodyPoseProviding = MockBodyPoseProvider()
+        #else
+        let provider: BodyPoseProviding = DemoMode.isActive("cpr") ? MockBodyPoseProvider() : CameraPoseService()
+        #endif
+        return CPRCoachViewModel(provider: provider, speech: speech)
+    }
+
     // Step-by-step voice guide
     func makeGuideViewModel(guide: FirstAidGuide) -> GuideViewModel {
         GuideViewModel(guide: guide, speech: speech, lessonsService: lessonsService)

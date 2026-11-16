@@ -1,0 +1,18 @@
+[project]
+name = "cpr-coach"
+version = "0.1.0"
+description = "Live CPR coach prototype: pose estimation, compression rate and voice feedback"
+requires-python = ">=3.12"
+dependencies = [
+    "mediapipe>=0.10.14",
+    "numpy>=1.26",
+    "opencv-python>=4.9",
+    "pyttsx3>=2.90",
+]
+
+[dependency-groups]
+dev = ["pytest>=8"]
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+pythonpath = ["."]

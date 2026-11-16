@@ -378,6 +378,7 @@
 				DEVELOPMENT_TEAM = WY36GU57Q5;
 				ENABLE_PREVIEWS = YES;
 				GENERATE_INFOPLIST_FILE = YES;
+				INFOPLIST_KEY_NSCameraUsageDescription = "La cámara guía tus compresiones de RCP; el video se procesa en el teléfono y no se guarda.";
 				INFOPLIST_KEY_NSLocationWhenInUseUsageDescription = "Enlace Vital envía tu ubicación exacta a Cruz Roja cuando reportas una emergencia.";
 				INFOPLIST_KEY_NSMicrophoneUsageDescription = "El micrófono se usa para dictar lo que está pasando en una emergencia.";
 				INFOPLIST_KEY_NSSpeechRecognitionUsageDescription = "El reconocimiento de voz convierte tu dictado en texto para llenar el reporte.";
@@ -400,6 +401,7 @@
 				DEVELOPMENT_TEAM = WY36GU57Q5;
 				ENABLE_PREVIEWS = YES;
 				GENERATE_INFOPLIST_FILE = YES;
+				INFOPLIST_KEY_NSCameraUsageDescription = "La cámara guía tus compresiones de RCP; el video se procesa en el teléfono y no se guarda.";
 				INFOPLIST_KEY_NSLocationWhenInUseUsageDescription = "Enlace Vital envía tu ubicación exacta a Cruz Roja cuando reportas una emergencia.";
 				INFOPLIST_KEY_NSMicrophoneUsageDescription = "El micrófono se usa para dictar lo que está pasando en una emergencia.";
 				INFOPLIST_KEY_NSSpeechRecognitionUsageDescription = "El reconocimiento de voz convierte tu dictado en texto para llenar el reporte.";
