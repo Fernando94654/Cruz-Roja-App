@@ -46,6 +46,12 @@ struct MedicalProfile: Equatable, Sendable {
     var updatedAt: Date?
 
     static let maxContacts = 5
+
+    // Lo que se guarda cuando la persona confirma que no tiene nada en esa lista.
+    // Así el paramédico distingue "no tiene" de "no lo llenó".
+    static let noAllergies = "Sin alergias conocidas"
+    static let noConditions = "Sin padecimientos conocidos"
+    static let noMedications = "Sin medicamentos"
 }
 
 extension MedicalProfile {
@@ -95,9 +101,9 @@ extension MedicalProfile {
     func cleaned() -> MedicalProfile {
         var copy = self
         copy.fullName = fullName.trimmingCharacters(in: .whitespacesAndNewlines)
-        copy.allergies = Self.cleanList(allergies)
-        copy.conditions = Self.cleanList(conditions)
-        copy.medications = Self.cleanList(medications)
+        copy.allergies = Self.cleanList(allergies, none: Self.noAllergies)
+        copy.conditions = Self.cleanList(conditions, none: Self.noConditions)
+        copy.medications = Self.cleanList(medications, none: Self.noMedications)
         copy.contacts = contacts.map { contact in
             var c = contact
             c.name = c.name.trimmingCharacters(in: .whitespaces)
@@ -108,13 +114,16 @@ extension MedicalProfile {
         return copy
     }
 
-    static func cleanList(_ list: [String]) -> [String] {
+    // Quita vacíos y repetidos; si hay datos reales, quita también el "Sin…"
+    static func cleanList(_ list: [String], none: String? = nil) -> [String] {
         var seen = Set<String>()
-        return list.compactMap { item in
+        let items: [String] = list.compactMap { item in
             let text = item.trimmingCharacters(in: .whitespacesAndNewlines)
             guard !text.isEmpty, seen.insert(text.lowercased()).inserted else { return nil }
             return text
         }
+        guard let none, items.count > 1 else { return items }
+        return items.filter { $0 != none }
     }
 
     func age(on day: Date = Date()) -> Int? {
@@ -153,7 +162,7 @@ extension MedicalProfile {
     }
 
     static func text(for list: [String]) -> String {
-        list.isEmpty ? "Ninguno registrado" : list.joined(separator: ", ")
+        list.isEmpty ? "Sin información" : list.joined(separator: ", ")
     }
 }
 

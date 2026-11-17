@@ -17,11 +17,30 @@ struct ReportView: View {
                     .listRowBackground(Color.clear)
                     .listRowInsets(EdgeInsets())
 
+                    if viewModel.report.reportingFor == .familyMember, !viewModel.savedDependents.isEmpty {
+                        Picker("¿Quién?", selection: Binding(
+                            get: { viewModel.report.dependentID },
+                            set: { viewModel.selectDependent($0) }
+                        )) {
+                            Text("No está en la lista").tag(UUID?.none)
+                            ForEach(viewModel.savedDependents) { dependent in
+                                Text(dependent.displayName).tag(Optional(dependent.id))
+                            }
+                        }
+                    }
+
                     if let name = viewModel.report.patientName {
                         Label("Paciente: \(name)", systemImage: "person.text.rectangle")
                             .font(.subheadline)
                     }
+
+                    if viewModel.report.reportingFor == .familyMember, viewModel.report.dependentID != nil {
+                        Label("Se enviará su perfil médico a Cruz Roja", systemImage: "heart.text.square")
+                            .font(.footnote)
+                            .foregroundStyle(.secondary)
+                    }
                 }
+                .onAppear { viewModel.matchDependentByName() }
 
                 Section {
                     TextField(viewModel.isPreparingDictation || isListening ? "" : "Ej. Mi abuela se cayó en la casa y está confundida",

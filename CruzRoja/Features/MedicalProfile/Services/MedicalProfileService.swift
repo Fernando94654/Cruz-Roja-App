@@ -1,25 +1,24 @@
 import Foundation
 
-// Trae y guarda el perfil médico
+// Trae y guarda el perfil médico del usuario que inició sesión
 protocol MedicalProfileServicing: Sendable {
-    func fetchProfile(userID: UUID) async throws -> MedicalProfile?
-    func saveProfile(_ profile: MedicalProfile, userID: UUID) async throws -> MedicalProfile
+    func fetchProfile() async throws -> MedicalProfile?
+    func saveProfile(_ profile: MedicalProfile) async throws -> MedicalProfile
 }
 
 // Versión real: se conecta al API
 struct MedicalProfileAPIService: MedicalProfileServicing {
     var client = APIClient()
 
-    func fetchProfile(userID: UUID) async throws -> MedicalProfile? {
-        try await client.get(path(userID), as: MedicalProfile.self)
+    // El servidor sabe de quién es el perfil por el inicio de sesión
+    private let path = "me/medical-profile"
+
+    func fetchProfile() async throws -> MedicalProfile? {
+        try await client.get(path, as: MedicalProfile.self)
     }
 
-    func saveProfile(_ profile: MedicalProfile, userID: UUID) async throws -> MedicalProfile {
-        try await client.put(path(userID), body: profile, as: MedicalProfile.self)
-    }
-
-    private func path(_ userID: UUID) -> String {
-        "users/\(userID.uuidString.lowercased())/medical-profile"
+    func saveProfile(_ profile: MedicalProfile) async throws -> MedicalProfile {
+        try await client.put(path, body: profile, as: MedicalProfile.self)
     }
 }
 
@@ -31,13 +30,12 @@ actor MockMedicalProfileService: MedicalProfileServicing {
         self.profile = profile
     }
 
-    func fetchProfile(userID: UUID) async throws -> MedicalProfile? {
+    func fetchProfile() async throws -> MedicalProfile? {
         profile
     }
 
-    func saveProfile(_ profile: MedicalProfile, userID: UUID) async throws -> MedicalProfile {
+    func saveProfile(_ profile: MedicalProfile) async throws -> MedicalProfile {
         var saved = profile
-        saved.userID = userID
         saved.updatedAt = Date()
         self.profile = saved
         return saved

@@ -20,12 +20,10 @@ final class MedicalProfileViewModel {
 
     private let service: MedicalProfileServicing
     private let cache: MedicalProfileCache
-    private let userID: UUID
 
-    init(service: MedicalProfileServicing, cache: MedicalProfileCache = MedicalProfileCache(), userID: UUID = APIConfig.demoUserID) {
+    init(service: MedicalProfileServicing, cache: MedicalProfileCache = MedicalProfileCache()) {
         self.service = service
         self.cache = cache
-        self.userID = userID
     }
 
     // Muestra primero la copia guardada y luego la actualiza desde el API
@@ -36,7 +34,7 @@ final class MedicalProfileViewModel {
         }
 
         do {
-            let remote = try await service.fetchProfile(userID: userID)
+            let remote = try await service.fetchProfile()
             isShowingCachedCopy = false
             profile = remote
             if let remote {
@@ -71,7 +69,7 @@ final class MedicalProfileViewModel {
         defer { isSaving = false }
 
         do {
-            let saved = try await service.saveProfile(cleaned, userID: userID)
+            let saved = try await service.saveProfile(cleaned)
             profile = saved
             cache.save(saved)
             isShowingCachedCopy = false
@@ -81,5 +79,14 @@ final class MedicalProfileViewModel {
             errorMessage = error.localizedDescription
             return false
         }
+    }
+
+    // Borra el perfil de la pantalla y del teléfono (al cerrar sesión)
+    func clear() {
+        profile = nil
+        state = .loading
+        isShowingCachedCopy = false
+        errorMessage = nil
+        cache.clear()
     }
 }

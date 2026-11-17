@@ -16,11 +16,18 @@ struct MedicalProfileDetailSections: View {
             }
         }
 
-        Section("Datos médicos") {
+        Section {
             LabeledContent("Tipo de sangre", value: profile.bloodType.label)
             LabeledContent("Alergias", value: MedicalProfile.text(for: profile.allergies))
             LabeledContent("Padecimientos", value: MedicalProfile.text(for: profile.conditions))
             LabeledContent("Medicamentos", value: MedicalProfile.text(for: profile.medications))
+        } header: {
+            Text("Datos médicos")
+        } footer: {
+            // Para saber si la información está al día
+            if let updatedAt = profile.updatedAt {
+                Text("Actualizado el \(updatedAt.formatted(date: .long, time: .omitted))")
+            }
         }
 
         Section("Contactos de emergencia") {

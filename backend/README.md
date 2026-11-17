@@ -140,8 +140,8 @@ tests/
 
 | Method | Path | Description | Responses |
 |---|---|---|---|
-| GET | `/users/{user_id}/medical-profile` | Returns the medical profile | 200, 404 |
-| PUT | `/users/{user_id}/medical-profile` | Creates or replaces the whole profile | 200, 404, 422 |
+| GET | `/me/medical-profile` | Returns my medical profile (token required) | 200, 401, 404 |
+| PUT | `/me/medical-profile` | Creates or replaces my whole profile (token required) | 200, 401, 422 |
 | GET | `/lessons` | Ordered lessons with stable UUID and optional emergency guide ID | 200, 503 |
 | GET | `/guides` | Ordered emergency guides with their steps | 200, 503 |
 | GET | `/knowledge` | First-aid chunks and their vectors for the assistant | 200, 503 |
@@ -176,11 +176,11 @@ Medical profiles of people the user looks after who don't use the app (parents, 
 
 | Method | Path | Description | Responses |
 |---|---|---|---|
-| GET | `/users/{user_id}/dependents` | Lists the user's dependents | 200, 404 |
-| POST | `/users/{user_id}/dependents` | Adds a dependent | 201, 404, 409 (more than 10), 422 |
-| GET | `/users/{user_id}/dependents/{dependent_id}` | Returns one dependent | 200, 404 |
-| PUT | `/users/{user_id}/dependents/{dependent_id}` | Replaces a dependent | 200, 404, 422 |
-| DELETE | `/users/{user_id}/dependents/{dependent_id}` | Removes a dependent and its contacts | 204, 404 |
+| GET | `/me/dependents` | Lists my dependents (token required) | 200, 401 |
+| POST | `/me/dependents` | Adds a dependent | 201, 401, 409 (more than 10), 422 |
+| GET | `/me/dependents/{dependent_id}` | Returns one of my dependents | 200, 401, 404 |
+| PUT | `/me/dependents/{dependent_id}` | Replaces one of my dependents | 200, 401, 404, 422 |
+| DELETE | `/me/dependents/{dependent_id}` | Removes one of my dependents and its contacts | 204, 401, 404 |
 
 ```json
 {

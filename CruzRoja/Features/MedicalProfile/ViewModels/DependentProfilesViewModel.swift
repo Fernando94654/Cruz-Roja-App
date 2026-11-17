@@ -19,12 +19,10 @@ final class DependentProfilesViewModel {
 
     private let service: DependentProfilesServicing
     private let cache: DependentProfilesCache
-    private let userID: UUID
 
-    init(service: DependentProfilesServicing, cache: DependentProfilesCache = DependentProfilesCache(), userID: UUID = APIConfig.demoUserID) {
+    init(service: DependentProfilesServicing, cache: DependentProfilesCache = DependentProfilesCache()) {
         self.service = service
         self.cache = cache
-        self.userID = userID
     }
 
     var canAddMore: Bool {
@@ -43,7 +41,7 @@ final class DependentProfilesViewModel {
         }
 
         do {
-            let remote = try await service.fetchDependents(userID: userID)
+            let remote = try await service.fetchDependents()
             dependents = remote
             cache.save(remote)
             isShowingCachedCopy = false
@@ -79,10 +77,10 @@ final class DependentProfilesViewModel {
 
         do {
             if isNew {
-                let saved = try await service.createDependent(cleaned, userID: userID)
+                let saved = try await service.createDependent(cleaned)
                 dependents.append(saved)
             } else {
-                let saved = try await service.updateDependent(cleaned, userID: userID)
+                let saved = try await service.updateDependent(cleaned)
                 if let index = dependents.firstIndex(where: { $0.id == saved.id }) {
                     dependents[index] = saved
                 }
@@ -99,7 +97,7 @@ final class DependentProfilesViewModel {
     @discardableResult
     func delete(_ dependent: DependentProfile) async -> Bool {
         do {
-            try await service.deleteDependent(id: dependent.id, userID: userID)
+            try await service.deleteDependent(id: dependent.id)
             dependents.removeAll { $0.id == dependent.id }
             cache.save(dependents)
             return true
@@ -107,5 +105,14 @@ final class DependentProfilesViewModel {
             errorMessage = error.localizedDescription
             return false
         }
+    }
+
+    // Borra la lista de la pantalla y del teléfono (al cerrar sesión)
+    func clear() {
+        dependents = []
+        state = .loading
+        isShowingCachedCopy = false
+        errorMessage = nil
+        cache.clear()
     }
 }

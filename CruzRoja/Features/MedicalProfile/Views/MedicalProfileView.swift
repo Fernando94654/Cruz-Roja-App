@@ -23,8 +23,12 @@ struct MedicalProfileView: View {
         NavigationStack {
             List {
                 Section { account }
-                content
-                DependentsSection(viewModel: dependents) { isAddingDependent = true }
+                if session.isSignedIn {
+                    content
+                    DependentsSection(viewModel: dependents) { isAddingDependent = true }
+                } else {
+                    signedOutMessage
+                }
             }
             .navigationTitle("Perfil médico")
             .toolbar {
@@ -36,13 +40,14 @@ struct MedicalProfileView: View {
                     }
                 }
                 ToolbarItem(placement: .topBarTrailing) {
-                    if viewModel.profile != nil {
+                    if session.isSignedIn, viewModel.profile != nil {
                         Button("Editar") { isEditing = true }
                     }
                 }
             }
-            .task { await loadAll() }
-            .refreshable { await loadAll() }
+            // Se vuelve a ejecutar cada vez que se inicia o se cierra sesión
+            .task(id: session.isSignedIn) { await refreshForSession() }
+            .refreshable { await refreshForSession() }
             .navigationDestination(for: DependentRoute.self) { route in
                 DependentProfileView(dependentID: route.id, viewModel: dependents)
             }
@@ -63,10 +68,43 @@ struct MedicalProfileView: View {
         }
     }
 
+    // Con sesión carga el perfil de esa cuenta; sin sesión borra lo que había en pantalla
+    private func refreshForSession() async {
+        if session.isSignedIn {
+            await loadAll()
+        } else {
+            viewModel.clear()
+            dependents.clear()
+        }
+    }
+
     private func loadAll() async {
         async let profile: Void = viewModel.load()
         async let family: Void = dependents.load()
         _ = await (profile, family)
+    }
+
+    // Sin sesión no se muestra ningún dato médico
+    private var signedOutMessage: some View {
+        Section {
+            VStack(spacing: 12) {
+                Image(systemName: "lock.fill")
+                    .font(.system(size: 36))
+                    .foregroundStyle(Color.brandRed)
+                Text("Inicia sesión para ver tu perfil médico")
+                    .font(.headline)
+                    .multilineTextAlignment(.center)
+                Text("Tu información médica solo la ves tú y se envía a Cruz Roja cuando reportas una emergencia.")
+                    .font(.subheadline)
+                    .foregroundStyle(.secondary)
+                    .multilineTextAlignment(.center)
+                Button("Iniciar sesión") { showsLogin = true }
+                    .buttonStyle(.borderedProminent)
+                    .tint(Color.brandRed)
+            }
+            .frame(maxWidth: .infinity)
+            .padding(.vertical)
+        }
     }
 
     @ViewBuilder

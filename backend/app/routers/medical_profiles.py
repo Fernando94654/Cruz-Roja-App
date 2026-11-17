@@ -4,20 +4,15 @@ from fastapi import APIRouter, Depends, HTTPException, status
 from sqlalchemy import func, select
 from sqlalchemy.orm import Session
 
+from app.auth import get_current_user
 from app.crypto import decrypt_list, encrypt_list
 from app.deps import get_db
 from app.models import EmergencyContact, MedicalProfile, User
 from app.models.medical import BloodType
 from app.schemas.medical_profile import EmergencyContactSchema, MedicalProfileIn, MedicalProfileOut
 
-router = APIRouter(prefix="/users", tags=["Medical profile"])
-
-
-def get_user(db: Session, user_id: uuid.UUID) -> User:
-    user = db.get(User, user_id)
-    if user is None:
-        raise HTTPException(status.HTTP_404_NOT_FOUND, detail="Usuario no encontrado")
-    return user
+# Solo el usuario que inició sesión ve y cambia su propio perfil
+router = APIRouter(prefix="/me", tags=["Medical profile"])
 
 
 def contacts_of(db: Session, user_id: uuid.UUID) -> list[EmergencyContact]:
@@ -39,20 +34,22 @@ def to_out(profile: MedicalProfile, contacts: list[EmergencyContact]) -> Medical
     )
 
 
-# GET: regresa el perfil médico del usuario
-@router.get("/{user_id}/medical-profile", response_model=MedicalProfileOut)
-def read_profile(user_id: uuid.UUID, db: Session = Depends(get_db)) -> MedicalProfileOut:
-    get_user(db, user_id)
+# GET: regresa el perfil médico del usuario que inició sesión
+@router.get("/medical-profile", response_model=MedicalProfileOut)
+def read_profile(me: User = Depends(get_current_user), db: Session = Depends(get_db)) -> MedicalProfileOut:
+    user_id = me.id
     profile = db.get(MedicalProfile, user_id)
     if profile is None:
         raise HTTPException(status.HTTP_404_NOT_FOUND, detail="El usuario aún no tiene perfil médico")
     return to_out(profile, contacts_of(db, user_id))
 
 
-# PUT: guarda el perfil médico del usuario
-@router.put("/{user_id}/medical-profile", response_model=MedicalProfileOut)
-def save_profile(user_id: uuid.UUID, data: MedicalProfileIn, db: Session = Depends(get_db)) -> MedicalProfileOut:
-    get_user(db, user_id)
+# PUT: guarda el perfil médico del usuario que inició sesión
+@router.put("/medical-profile", response_model=MedicalProfileOut)
+def save_profile(
+    data: MedicalProfileIn, me: User = Depends(get_current_user), db: Session = Depends(get_db)
+) -> MedicalProfileOut:
+    user_id = me.id
     profile = db.get(MedicalProfile, user_id)
     if profile is None:
         profile = MedicalProfile(user_id=user_id)

@@ -29,6 +29,8 @@ final class EmergencyReportViewModel {
     private let hasProvidedLocation: Bool
     // Summary of the user's own medical profile, attached when reporting for themselves
     private let medicalSummary: () -> String?
+    // Familiares guardados en el teléfono, para elegir de quién es la emergencia
+    private let loadDependents: () -> [DependentProfile]
     // Runs once the report is stored, which is when the ambulance is dispatched
     private let onSent: @MainActor () -> Void
     private var textBeforeDictation = ""
@@ -43,6 +45,7 @@ final class EmergencyReportViewModel {
         locationProvider: LocationProviding,
         dictation: Dictating,
         medicalSummary: @escaping () -> String?,
+        savedDependents: @escaping () -> [DependentProfile] = { [] },
         onSent: @escaping @MainActor () -> Void = {}
     ) {
         self.report = report
@@ -54,6 +57,7 @@ final class EmergencyReportViewModel {
         self.locationProvider = locationProvider
         self.dictation = dictation
         self.medicalSummary = medicalSummary
+        self.loadDependents = savedDependents
         self.onSent = onSent
     }
 
@@ -166,7 +170,7 @@ final class EmergencyReportViewModel {
         isSending = true
         defer { isSending = false }
         do {
-            let medical = report.reportingFor == .myself ? medicalSummary() : nil
+            let medical = medicalSummaryToSend()
             let sent = try await service.send(report, location: location, summary: summary, medicalSummary: medical)
             shareURL = sent.shareURL
             onSent()
@@ -174,6 +178,43 @@ final class EmergencyReportViewModel {
         } catch {
             errorMessage = error.localizedDescription
             return false
+        }
+    }
+
+    // MARK: - Familiares guardados
+
+    var savedDependents: [DependentProfile] { loadDependents() }
+
+    // Elige de qué familiar guardado es la emergencia (nil = no está en la lista)
+    func selectDependent(_ id: UUID?) {
+        let previous = savedDependents.first { $0.id == report.dependentID }
+        report.dependentID = id
+        if let dependent = savedDependents.first(where: { $0.id == id }) {
+            report.patientName = dependent.fullName
+        } else if previous?.fullName == report.patientName {
+            // Quita el nombre que se había puesto al elegir a ese familiar
+            report.patientName = nil
+        }
+    }
+
+    // Si el reporte viene de Círculo familiar con un nombre que ya está guardado, lo elige solo
+    func matchDependentByName() {
+        guard report.reportingFor == .familyMember, report.dependentID == nil,
+              let name = report.patientName?.trimmingCharacters(in: .whitespaces).lowercased(), !name.isEmpty
+        else { return }
+        report.dependentID = savedDependents.first { $0.fullName.lowercased() == name }?.id
+    }
+
+    // Mi perfil si es para mí; el del familiar elegido si es para un familiar; nada si es para otra persona
+    private func medicalSummaryToSend() -> String? {
+        switch report.reportingFor {
+        case .myself:
+            return medicalSummary()
+        case .familyMember:
+            guard let id = report.dependentID else { return nil }
+            return savedDependents.first { $0.id == id }?.profile.reportSummary
+        case .someoneElse:
+            return nil
         }
     }
 }

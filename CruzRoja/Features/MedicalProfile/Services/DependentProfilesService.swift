@@ -1,37 +1,37 @@
 import Foundation
 
-// Trae, agrega, edita y borra familiares
+// Trae, agrega, edita y borra los familiares del usuario que inició sesión
 protocol DependentProfilesServicing: Sendable {
-    func fetchDependents(userID: UUID) async throws -> [DependentProfile]
-    func createDependent(_ dependent: DependentProfile, userID: UUID) async throws -> DependentProfile
-    func updateDependent(_ dependent: DependentProfile, userID: UUID) async throws -> DependentProfile
-    func deleteDependent(id: UUID, userID: UUID) async throws
+    func fetchDependents() async throws -> [DependentProfile]
+    func createDependent(_ dependent: DependentProfile) async throws -> DependentProfile
+    func updateDependent(_ dependent: DependentProfile) async throws -> DependentProfile
+    func deleteDependent(id: UUID) async throws
 }
 
 // Versión real: se conecta al API
 struct DependentProfilesAPIService: DependentProfilesServicing {
     var client = APIClient()
 
-    func fetchDependents(userID: UUID) async throws -> [DependentProfile] {
-        try await client.get(path(userID), as: [DependentProfile].self) ?? []
+    func fetchDependents() async throws -> [DependentProfile] {
+        try await client.get(path(), as: [DependentProfile].self) ?? []
     }
 
-    func createDependent(_ dependent: DependentProfile, userID: UUID) async throws -> DependentProfile {
-        try await client.post(path(userID), body: dependent, as: DependentProfile.self)
+    func createDependent(_ dependent: DependentProfile) async throws -> DependentProfile {
+        try await client.post(path(), body: dependent, as: DependentProfile.self)
     }
 
-    func updateDependent(_ dependent: DependentProfile, userID: UUID) async throws -> DependentProfile {
-        try await client.put(path(userID, dependent.id), body: dependent, as: DependentProfile.self)
+    func updateDependent(_ dependent: DependentProfile) async throws -> DependentProfile {
+        try await client.put(path(dependent.id), body: dependent, as: DependentProfile.self)
     }
 
-    func deleteDependent(id: UUID, userID: UUID) async throws {
-        try await client.delete(path(userID, id))
+    func deleteDependent(id: UUID) async throws {
+        try await client.delete(path(id))
     }
 
-    private func path(_ userID: UUID, _ dependentID: UUID? = nil) -> String {
-        let base = "users/\(userID.uuidString.lowercased())/dependents"
-        guard let dependentID else { return base }
-        return "\(base)/\(dependentID.uuidString.lowercased())"
+    // El servidor sabe de quién son los familiares por el inicio de sesión
+    private func path(_ dependentID: UUID? = nil) -> String {
+        guard let dependentID else { return "me/dependents" }
+        return "me/dependents/\(dependentID.uuidString.lowercased())"
     }
 }
 
@@ -43,11 +43,11 @@ actor MockDependentProfilesService: DependentProfilesServicing {
         self.dependents = dependents
     }
 
-    func fetchDependents(userID: UUID) async throws -> [DependentProfile] {
+    func fetchDependents() async throws -> [DependentProfile] {
         dependents
     }
 
-    func createDependent(_ dependent: DependentProfile, userID: UUID) async throws -> DependentProfile {
+    func createDependent(_ dependent: DependentProfile) async throws -> DependentProfile {
         var saved = dependent
         saved.id = UUID()
         saved.profile.updatedAt = Date()
@@ -55,7 +55,7 @@ actor MockDependentProfilesService: DependentProfilesServicing {
         return saved
     }
 
-    func updateDependent(_ dependent: DependentProfile, userID: UUID) async throws -> DependentProfile {
+    func updateDependent(_ dependent: DependentProfile) async throws -> DependentProfile {
         guard let index = dependents.firstIndex(where: { $0.id == dependent.id }) else {
             throw APIError.server(status: 404, message: "Familiar no encontrado")
         }
@@ -65,7 +65,7 @@ actor MockDependentProfilesService: DependentProfilesServicing {
         return saved
     }
 
-    func deleteDependent(id: UUID, userID: UUID) async throws {
+    func deleteDependent(id: UUID) async throws {
         dependents.removeAll { $0.id == id }
     }
 }
@@ -93,5 +93,9 @@ struct DependentProfilesCache: Sendable {
         } catch {
             print("Could not cache the dependent profiles: \(error)")
         }
+    }
+
+    func clear() {
+        try? FileManager.default.removeItem(at: file)
     }
 }
