@@ -11,7 +11,21 @@ struct AlertsView: View {
     var body: some View {
         NavigationStack {
             List {
+                if let error = viewModel.errorMessage {
+                    errorBanner(error)
+                }
+
+                if viewModel.hasLoaded {
+                    summaryCard
+                }
+
                 Section("Alertas oficiales") {
+                    scopePicker
+                    if viewModel.hasLoaded && viewModel.officialAlerts.isEmpty {
+                        Text(viewModel.officialScope == .myArea ? "No hay alertas oficiales en tu zona"
+                                                                : "No hay alertas oficiales vigentes en México")
+                            .foregroundStyle(.secondary)
+                    }
                     ForEach(viewModel.officialAlerts) { alert in
                         officialAlertRow(alert)
                     }
@@ -19,8 +33,8 @@ struct AlertsView: View {
 
                 Section("Reportes de vecinos") {
                     categoryFilter
-                    if viewModel.filteredReports.isEmpty {
-                        Text("No hay reportes de esta categoría")
+                    if viewModel.hasLoaded && viewModel.filteredReports.isEmpty {
+                        Text(viewModel.selectedCategory == nil ? "No hay reportes cerca de ti" : "No hay reportes de esta categoría")
                             .foregroundStyle(.secondary)
                     }
                     ForEach(viewModel.filteredReports) { report in
@@ -39,9 +53,13 @@ struct AlertsView: View {
             }
             .navigationTitle("Alertas")
             .task { await viewModel.load() }
+            // Se regenera el resumen cuando cambian las alertas o los reportes; la tarea anterior se cancela
+            .task(id: viewModel.summaryKey) { await viewModel.summarize() }
+            .onDisappear { viewModel.stopSpeech() }
             .refreshable { await viewModel.load() }
             .safeAreaInset(edge: .bottom) {
                 Button {
+                    viewModel.startNewReport()
                     showsNewReport = true
                 } label: {
                     Label("Reportar algo en mi zona", systemImage: "plus")
@@ -57,6 +75,86 @@ struct AlertsView: View {
                 NewCommunityReportView(viewModel: viewModel)
             }
         }
+    }
+
+    // Tarjeta con el resumen generado por la IA y el boton para escucharlo
+    private var summaryCard: some View {
+        Section {
+            VStack(alignment: .leading, spacing: 10) {
+                Label(viewModel.summary?.source == .rules ? "Resumen automático" : "Resumen con IA",
+                      systemImage: viewModel.summary?.source == .rules ? "text.bubble" : "sparkles")
+                    .font(.subheadline.bold())
+                    .foregroundStyle(Color.brandRed)
+                if let summary = viewModel.summary {
+                    Text(summary.text)
+                        .font(.body)
+                        .opacity(viewModel.isSummarizing ? 0.5 : 1)
+                } else {
+                    HStack(spacing: 8) {
+                        ProgressView()
+                        Text("Analizando las alertas de tu zona…")
+                            .foregroundStyle(.secondary)
+                    }
+                }
+                HStack {
+                    Button {
+                        viewModel.toggleSpeech()
+                    } label: {
+                        Label(viewModel.isSpeaking ? "Detener" : "Escuchar",
+                              systemImage: viewModel.isSpeaking ? "stop.fill" : "speaker.wave.2.fill")
+                    }
+                    .buttonStyle(.bordered)
+                    .disabled(viewModel.summary == nil)
+                    Spacer()
+                    if viewModel.summary?.source == .ai {
+                        Text("Generado en tu iPhone")
+                            .font(.caption)
+                            .foregroundStyle(.secondary)
+                    }
+                }
+            }
+            .padding(.vertical, 4)
+        }
+    }
+
+    // Selector entre las alertas de la zona del usuario y las de todo Mexico
+    private var scopePicker: some View {
+        Picker("Mostrar", selection: Binding(
+            get: { viewModel.officialScope },
+            set: { scope in Task { await viewModel.setOfficialScope(scope) } }
+        )) {
+            ForEach(OfficialAlertScope.allCases) { scope in
+                Text(scope.rawValue).tag(scope)
+            }
+        }
+        .pickerStyle(.segmented)
+        .listRowInsets(EdgeInsets(top: 8, leading: 16, bottom: 8, trailing: 16))
+    }
+
+    // Aviso de error con opcion de reintentar o cerrarlo
+    private func errorBanner(_ message: String) -> some View {
+        HStack(alignment: .top, spacing: 12) {
+            Image(systemName: "exclamationmark.triangle.fill")
+                .foregroundStyle(.orange)
+            VStack(alignment: .leading, spacing: 6) {
+                Text(message)
+                    .font(.subheadline)
+                Button("Reintentar") {
+                    Task { await viewModel.load() }
+                }
+                .font(.subheadline.bold())
+            }
+            Spacer()
+            Button {
+                viewModel.dismissError()
+            } label: {
+                Image(systemName: "xmark")
+                    .foregroundStyle(.secondary)
+            }
+            .accessibilityLabel("Cerrar aviso")
+        }
+        .buttonStyle(.borderless)
+        .padding(.vertical, 4)
     }
 
     private var categoryFilter: some View {
