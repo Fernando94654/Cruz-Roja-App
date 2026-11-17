@@ -29,10 +29,11 @@ M = {
   ("community_report_confirmations", [("report_id","uuid","PK FK"),("user_id","uuid","PK FK"),("created_at","timestamptz","")]),
   ("community_report_flags", [("report_id","uuid","PK FK"),("user_id","uuid","PK FK"),("created_at","timestamptz","")]),
  ]),
- "Learning": ("#F2F2F2", [
+ "Learning and RAG": ("#F2F2F2", [
   ("guides", [("id","varchar(80)","PK"),("title","varchar(120)",""),("icon","varchar(80)",""),("keywords","text[]",""),("manual_page","int",""),("position","int",""),("steps","jsonb","")]),
   ("lessons", [("id","uuid","PK"),("title","varchar(120)",""),("description","text",""),("duration_seconds","int",""),("video_url","varchar(500)",""),("guide_id","varchar(80)","FK"),("publisher","text",""),("steps","text[]",""),("position","int","")]),
   ("lesson_completions", [("user_id","uuid","PK FK"),("lesson_id","uuid","PK FK"),("completed_at","timestamptz","")]),
+  ("kb_chunks", [("id","varchar(120)","PK"),("text","text",""),("embedding","real[]",""),("embedding_model","text",""),("updated_at","timestamptz","")]),
  ]),
 }
 

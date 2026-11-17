@@ -18,7 +18,8 @@ IOS = ("CruzRoja/", "iOS app target", [
             ("ViewModels/", "@MainActor @Observable state", []),
             ("Views/", "SwiftUI screens", []),
         ]),
-        ("Assistant/", "first-aid guides (offline cache)", []),
+        ("Assistant/", "first-aid guides + on-device RAG (EmbeddingGemma)", []),
+        ("CPRCoach/", "camera CPR coach (Vision body pose)", []),
         ("Alerts/", "official alerts + community reports", []),
         ("Family/", "family circle, wellbeing checks", []),
         ("Learn/", "lessons, videos, progress", []),
@@ -30,6 +31,7 @@ IOS = ("CruzRoja/", "iOS app target", [
 BACKEND = ("backend/", "Python package enlace-vital-backend", [
     ("app/", "FastAPI application", [
         ("main.py", "creates the app and registers routers", []),
+        ("smn_alerts.py", "imports SMN CAP alerts into official_alerts", []),
         ("routers/", "Controllers: one module per resource", []),
         ("schemas/", "Views: Pydantic request/response DTOs", []),
         ("models/", "Models: SQLAlchemy ORM tables by domain", []),
@@ -37,8 +39,8 @@ BACKEND = ("backend/", "Python package enlace-vital-backend", [
         ("crypto.py", "Fernet encryption of medical data", []),
         ("db.py / deps.py", "engine, session per request", []),
     ]),
-    ("alembic/versions/", "schema migrations 0001-0010", []),
-    ("scripts/", "seed.py, demo_official_alerts.py", []),
+    ("alembic/versions/", "schema migrations 0001-0011", []),
+    ("scripts/", "seed.py, sync_official_alerts.py, load_knowledge.py", []),
     ("tests/", "pytest against a throwaway Postgres DB", []),
     ("pyproject.toml", "dependencies and tooling", []),
 ])

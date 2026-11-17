@@ -34,16 +34,18 @@ digraph folders {
   n12 -> n15;
   n16 [label=<<b>Views/</b><br/><font point-size="10">SwiftUI screens</font>>, fillcolor="#FDECEE", fontcolor="black", color="#C8102E"];
   n12 -> n16;
-  n17 [label=<<b>Assistant/</b><br/><font point-size="10">first-aid guides (offline cache)</font>>, fillcolor="#FDECEE", fontcolor="black", color="#C8102E"];
+  n17 [label=<<b>Assistant/</b><br/><font point-size="10">first-aid guides + on-device RAG (EmbeddingGemma)</font>>, fillcolor="#FDECEE", fontcolor="black", color="#C8102E"];
   n11 -> n17;
-  n18 [label=<<b>Alerts/</b><br/><font point-size="10">official alerts + community reports</font>>, fillcolor="#FDECEE", fontcolor="black", color="#C8102E"];
+  n18 [label=<<b>CPRCoach/</b><br/><font point-size="10">camera CPR coach (Vision body pose)</font>>, fillcolor="#FDECEE", fontcolor="black", color="#C8102E"];
   n11 -> n18;
-  n19 [label=<<b>Family/</b><br/><font point-size="10">family circle, wellbeing checks</font>>, fillcolor="#FDECEE", fontcolor="black", color="#C8102E"];
+  n19 [label=<<b>Alerts/</b><br/><font point-size="10">official alerts + community reports</font>>, fillcolor="#FDECEE", fontcolor="black", color="#C8102E"];
   n11 -> n19;
-  n20 [label=<<b>Learn/</b><br/><font point-size="10">lessons, videos, progress</font>>, fillcolor="#FDECEE", fontcolor="black", color="#C8102E"];
+  n20 [label=<<b>Family/</b><br/><font point-size="10">family circle, wellbeing checks</font>>, fillcolor="#FDECEE", fontcolor="black", color="#C8102E"];
   n11 -> n20;
-  n21 [label=<<b>MedicalProfile/</b><br/><font point-size="10">profile, dependents, QR</font>>, fillcolor="#FDECEE", fontcolor="black", color="#C8102E"];
+  n21 [label=<<b>Learn/</b><br/><font point-size="10">lessons, videos, progress</font>>, fillcolor="#FDECEE", fontcolor="black", color="#C8102E"];
   n11 -> n21;
-  n22 [label=<<b>Auth/</b><br/><font point-size="10">login and session</font>>, fillcolor="#FDECEE", fontcolor="black", color="#C8102E"];
+  n22 [label=<<b>MedicalProfile/</b><br/><font point-size="10">profile, dependents, QR</font>>, fillcolor="#FDECEE", fontcolor="black", color="#C8102E"];
   n11 -> n22;
+  n23 [label=<<b>Auth/</b><br/><font point-size="10">login and session</font>>, fillcolor="#FDECEE", fontcolor="black", color="#C8102E"];
+  n11 -> n23;
 }
