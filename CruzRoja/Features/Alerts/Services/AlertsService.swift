@@ -9,12 +9,27 @@ protocol AlertsServicing: Sendable {
     func flag(reportID: UUID) async throws -> CommunityReport
     func unflag(reportID: UUID) async throws -> CommunityReport
     func publish(category: CommunityReportCategory, title: String) async throws -> CommunityReport
+    // Alertas oficiales de todo Mexico, sin filtrar por la zona del usuario
+    func fetchAllOfficialAlerts() async throws -> [OfficialAlert]
+}
+
+// Los servicios que no distinguen zona (pruebas, demo) regresan las mismas alertas en ambos casos
+extension AlertsServicing {
+    func fetchAllOfficialAlerts() async throws -> [OfficialAlert] {
+        try await fetchOfficialAlerts()
+    }
 }
 
 // Implementacion que consume la API /alerts; el usuario se identifica mediante el token de sesion
 struct AlertsAPIService: AlertsServicing {
     var client = APIClient()
     let locationProvider: any LocationProviding & Sendable
+    private let recentLocation = RecentLocation()
+
+    init(client: APIClient = APIClient(), locationProvider: any LocationProviding & Sendable) {
+        self.client = client
+        self.locationProvider = locationProvider
+    }
 
     enum PublishError: LocalizedError {
         case noLocation
@@ -80,13 +95,20 @@ struct AlertsAPIService: AlertsServicing {
         let longitude: Double
     }
 
+    // Con ubicacion solo se piden las alertas de la zona del usuario; sin ella se muestran todas
     func fetchOfficialAlerts() async throws -> [OfficialAlert] {
+        let alerts = try await client.get(await nearRoute("official"), as: [OfficialAlertDTO].self) ?? []
+        return alerts.map(\.alert)
+    }
+
+    func fetchAllOfficialAlerts() async throws -> [OfficialAlert] {
         let alerts = try await client.get(path("official"), as: [OfficialAlertDTO].self) ?? []
         return alerts.map(\.alert)
     }
 
+    // Con ubicacion solo se piden los reportes cercanos; sin ella se muestran todos
     func fetchCommunityReports() async throws -> [CommunityReport] {
-        let reports = try await client.get(path("reports"), as: [ReportDTO].self) ?? []
+        let reports = try await client.get(await nearRoute("reports"), as: [ReportDTO].self) ?? []
         return reports.map(\.report)
     }
 
@@ -118,8 +140,28 @@ struct AlertsAPIService: AlertsServicing {
         "alerts/\(rest)"
     }
 
+    // Agrega la ubicacion a la ruta, por ejemplo alerts/official/near/25.65/-100.28
+    private func nearRoute(_ rest: String) async -> String {
+        guard let coordinate = await recentLocation.coordinate(from: locationProvider) else { return path(rest) }
+        return path("\(rest)/near/\(coordinate.latitude)/\(coordinate.longitude)")
+    }
+
     private func id(_ uuid: UUID) -> String {
         uuid.uuidString.lowercased()
+    }
+}
+
+// Guarda la ultima ubicacion un minuto, asi al cargar alertas y reportes se pide una sola vez
+// (CoreLocationService regresa nil si se le pide otra ubicacion mientras busca la primera)
+actor RecentLocation {
+    static let maxAge: TimeInterval = 60
+    private var last: (coordinate: Coordinate, date: Date)?
+
+    func coordinate(from provider: any LocationProviding & Sendable) async -> Coordinate? {
+        if let last, Date().timeIntervalSince(last.date) < Self.maxAge { return last.coordinate }
+        guard let coordinate = await provider.current()?.coordinate else { return nil }
+        last = (coordinate, Date())
+        return coordinate
     }
 }
 

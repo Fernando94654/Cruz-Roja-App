@@ -18,6 +18,10 @@ struct NewCommunityReportView: View {
                 TextField("¿Qué pasó? Ej. Calle inundada", text: $title, axis: .vertical)
                 Label("Se usará tu ubicación actual", systemImage: "location.fill")
                     .foregroundStyle(.secondary)
+                if let error = viewModel.publishError {
+                    Label(error, systemImage: "exclamationmark.triangle.fill")
+                        .foregroundStyle(.red)
+                }
             }
             .navigationTitle("Nuevo reporte")
             .navigationBarTitleDisplayMode(.inline)
