@@ -1,6 +1,6 @@
 import Foundation
 
-// Last profile received from the API, so the profile and QR work offline and other features can read it
+// Guarda el perfil en el teléfono para usarlo sin internet
 struct MedicalProfileCache: Sendable {
     let file: URL
 
@@ -15,7 +15,6 @@ struct MedicalProfileCache: Sendable {
         return try? JSONDecoder().decode(MedicalProfile.self, from: data)
     }
 
-    // Written with complete file protection: only readable while the phone is unlocked
     func save(_ profile: MedicalProfile) {
         do {
             try FileManager.default.createDirectory(at: file.deletingLastPathComponent(), withIntermediateDirectories: true)

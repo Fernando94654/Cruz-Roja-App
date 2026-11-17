@@ -39,6 +39,7 @@ def to_out(profile: MedicalProfile, contacts: list[EmergencyContact]) -> Medical
     )
 
 
+# GET: regresa el perfil médico del usuario
 @router.get("/{user_id}/medical-profile", response_model=MedicalProfileOut)
 def read_profile(user_id: uuid.UUID, db: Session = Depends(get_db)) -> MedicalProfileOut:
     get_user(db, user_id)
@@ -48,6 +49,7 @@ def read_profile(user_id: uuid.UUID, db: Session = Depends(get_db)) -> MedicalPr
     return to_out(profile, contacts_of(db, user_id))
 
 
+# PUT: guarda el perfil médico del usuario
 @router.put("/{user_id}/medical-profile", response_model=MedicalProfileOut)
 def save_profile(user_id: uuid.UUID, data: MedicalProfileIn, db: Session = Depends(get_db)) -> MedicalProfileOut:
     get_user(db, user_id)
@@ -64,7 +66,6 @@ def save_profile(user_id: uuid.UUID, data: MedicalProfileIn, db: Session = Depen
     profile.medications = encrypt_list(data.medications)
     profile.updated_at = func.now()
 
-    # Contacts are replaced as a whole, simpler than diffing
     for contact in contacts_of(db, user_id):
         db.delete(contact)
     db.add_all(

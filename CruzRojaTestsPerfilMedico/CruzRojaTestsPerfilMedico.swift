@@ -1,15 +1,10 @@
-//
-//  CruzRojaTestsPerfilMedico.swift
-//  CruzRojaTestsPerfilMedico
-//
-//  Unit tests for the medical profile feature (Fernando Robles). Run with ⌘U in Xcode.
-//
+// Pruebas automáticas del perfil médico (Fernando Robles)
 
 import Foundation
 import Testing
 @testable import CruzRoja
 
-// Service that always fails, to simulate having no connection
+// Servicio falso que simula no tener internet
 private struct OfflineDependentsService: DependentProfilesServicing {
     func fetchDependents(userID: UUID) async throws -> [DependentProfile] { throw APIError.offline }
     func createDependent(_ dependent: DependentProfile, userID: UUID) async throws -> DependentProfile { throw APIError.offline }

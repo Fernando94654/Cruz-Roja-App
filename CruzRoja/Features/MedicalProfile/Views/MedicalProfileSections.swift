@@ -1,6 +1,6 @@
 import SwiftUI
 
-// Read-only sections of a medical profile, shared by "Mi perfil" and family members' profiles
+// Muestra los datos del perfil
 struct MedicalProfileDetailSections: View {
     let profile: MedicalProfile
     var relationship: String? = nil
@@ -46,8 +46,7 @@ struct MedicalProfileDetailSections: View {
     }
 }
 
-// QR thumbnail plus the privacy toggle for contacts.
-// The parent presents the full-screen QR (presentations inside List rows are unreliable).
+// Vista previa del código QR
 struct MedicalProfileQRSection: View {
     let profile: MedicalProfile
     @Binding var includesContacts: Bool

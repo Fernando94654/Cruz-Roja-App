@@ -19,7 +19,6 @@ enum BloodType: String, Codable, CaseIterable, Identifiable, Sendable {
 }
 
 struct EmergencyContact: Codable, Identifiable, Equatable, Hashable, Sendable {
-    // Local identity for lists; not sent to the API
     var id = UUID()
     var name: String
     var relationship: String
@@ -34,7 +33,7 @@ struct EmergencyContact: Codable, Identifiable, Equatable, Hashable, Sendable {
     }
 }
 
-// Same shape as GET /users/{id}/medical-profile
+// Información médica del usuario
 struct MedicalProfile: Equatable, Sendable {
     var userID: UUID?
     var fullName: String = ""
@@ -49,27 +48,22 @@ struct MedicalProfile: Equatable, Sendable {
     static let maxContacts = 5
 }
 
-// MARK: - Validation
-
 extension MedicalProfile {
-    // "81 1234-5678" → "8112345678"
     static func digitsOnly(_ text: String) -> String {
         String(text.filter { $0.isASCII && $0.isNumber })
     }
 
-    // Mexican phone numbers have 10 digits
+    // El teléfono debe tener 10 dígitos
     static func isValidPhone(_ text: String) -> Bool {
         digitsOnly(text).count == 10
     }
 
-    // "8112345678" → "81 1234 5678"; anything else is returned unchanged
     static func formatPhone(_ text: String) -> String {
         let d = Array(digitsOnly(text))
         guard d.count == 10 else { return text }
         return "\(String(d[0..<2])) \(String(d[2..<6])) \(String(d[6..<10]))"
     }
 
-    // User-facing messages of what must be fixed; empty when the profile can be saved
     var validationErrors: [String] {
         var errors: [String] = []
         if fullName.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty {
@@ -98,7 +92,6 @@ extension MedicalProfile {
 
     var isValid: Bool { validationErrors.isEmpty }
 
-    // Trimmed copy without empty or duplicate items and with digit-only phones
     func cleaned() -> MedicalProfile {
         var copy = self
         copy.fullName = fullName.trimmingCharacters(in: .whitespacesAndNewlines)
@@ -130,10 +123,8 @@ extension MedicalProfile {
     }
 }
 
-// MARK: - QR and report text
-
 extension MedicalProfile {
-    // Text inside the QR code; any camera reads it offline
+    // Texto que va dentro del código QR
     func qrText(includeContacts: Bool) -> String {
         var lines = ["CRUZ ROJA · PERFIL MÉDICO"]
         lines.append("Nombre: \(fullName)")
@@ -152,7 +143,6 @@ extension MedicalProfile {
         return lines.joined(separator: "\n")
     }
 
-    // One-line summary attached to emergency reports
     var reportSummary: String {
         [
             "Sangre \(bloodType.label)",
@@ -167,9 +157,6 @@ extension MedicalProfile {
     }
 }
 
-// MARK: - JSON
-
-// Declared in an extension to keep the memberwise initializer
 extension MedicalProfile: Codable {
     enum CodingKeys: String, CodingKey {
         case userID = "user_id"
@@ -186,7 +173,6 @@ extension MedicalProfile: Codable {
         fullName = try c.decodeIfPresent(String.self, forKey: .fullName) ?? ""
         dateOfBirth = try c.decodeIfPresent(String.self, forKey: .dateOfBirth)
             .flatMap { Self.dayFormatter.date(from: $0) }
-        // Unknown values from a newer API fall back to .unknown instead of failing
         bloodType = (try? c.decode(BloodType.self, forKey: .bloodType)) ?? .unknown
         allergies = try c.decodeIfPresent([String].self, forKey: .allergies) ?? []
         conditions = try c.decodeIfPresent([String].self, forKey: .conditions) ?? []
@@ -209,7 +195,6 @@ extension MedicalProfile: Codable {
         try c.encodeIfPresent(updatedAt.map { ISO8601DateFormatter().string(from: $0) }, forKey: .updatedAt)
     }
 
-    // "1958-03-14"
     static var dayFormatter: DateFormatter {
         let f = DateFormatter()
         f.calendar = Calendar(identifier: .gregorian)

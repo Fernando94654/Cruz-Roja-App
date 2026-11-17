@@ -1,7 +1,7 @@
 import Foundation
 import Observation
 
-// Profiles of family members the user looks after, shown under "Familiares" in the profile tab
+// Controla la lista de familiares
 @MainActor
 @Observable
 final class DependentProfilesViewModel {
@@ -13,7 +13,6 @@ final class DependentProfilesViewModel {
 
     private(set) var dependents: [DependentProfile] = []
     private(set) var state: State = .loading
-    // True when offline and showing the cached list
     private(set) var isShowingCachedCopy = false
     private(set) var isSaving = false
     var errorMessage: String?
@@ -36,7 +35,7 @@ final class DependentProfilesViewModel {
         dependents.first { $0.id == id }
     }
 
-    // Shows the cached list right away, then refreshes from the API
+    // Muestra primero la copia guardada y luego la actualiza desde el API
     func load() async {
         if state != .ready, let cached = cache.load() {
             dependents = cached
@@ -59,7 +58,7 @@ final class DependentProfilesViewModel {
         }
     }
 
-    // Creates a new dependent or updates an existing one; returns true when saved so the editor can close
+    // Agrega o edita un familiar
     @discardableResult
     func save(_ draft: DependentProfile) async -> Bool {
         let cleaned = draft.cleaned()
@@ -96,7 +95,7 @@ final class DependentProfilesViewModel {
         }
     }
 
-    // Returns true when deleted so the detail screen can close
+    // Borra un familiar
     @discardableResult
     func delete(_ dependent: DependentProfile) async -> Bool {
         do {
