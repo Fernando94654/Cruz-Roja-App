@@ -77,6 +77,21 @@ struct CruzRojaTestsPerfilMedico {
         #expect(cache.load() == nil)
     }
 
+    // TC-PM-10
+    @Test("\"Sin alergias conocidas\" se distingue de no haberlas llenado")
+    func noKnownAllergies() {
+        var profile = MedicalProfile.sample
+        profile.allergies = [MedicalProfile.noAllergies]
+        #expect(profile.cleaned().allergies == ["Sin alergias conocidas"])
+
+        // Si después agrega una alergia real, se quita el "Sin…"
+        profile.allergies = [MedicalProfile.noAllergies, "Látex"]
+        #expect(profile.cleaned().allergies == ["Látex"])
+
+        // Vacío significa que no lo llenó
+        #expect(MedicalProfile.text(for: []) == "Sin información")
+    }
+
     // TC-PM-09
     @Test("El reporte para un familiar guardado lleva su perfil médico")
     func familyReportSendsDependentProfile() async {

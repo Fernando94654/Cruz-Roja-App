@@ -27,9 +27,12 @@ struct MedicalProfileFormSections: View {
             }
         }
 
-        EditableListSection(title: "Alergias", placeholder: "Ej. Penicilina", items: $draft.allergies)
-        EditableListSection(title: "Padecimientos", placeholder: "Ej. Asma", items: $draft.conditions)
-        EditableListSection(title: "Medicamentos", placeholder: "Ej. Salbutamol", items: $draft.medications)
+        EditableListSection(title: "Alergias", placeholder: "Ej. Penicilina", items: $draft.allergies,
+                            noneText: MedicalProfile.noAllergies)
+        EditableListSection(title: "Padecimientos", placeholder: "Ej. Asma", items: $draft.conditions,
+                            noneText: MedicalProfile.noConditions)
+        EditableListSection(title: "Medicamentos", placeholder: "Ej. Salbutamol", items: $draft.medications,
+                            noneText: MedicalProfile.noMedications)
 
         contacts
     }
@@ -95,32 +98,51 @@ struct EditableListSection: View {
     let title: String
     let placeholder: String
     @Binding var items: [String]
+    // Opción para confirmar que no tiene nada, ej. "Sin alergias conocidas"
+    var noneText: String? = nil
     @State private var newItem = ""
 
     var body: some View {
         Section {
-            ForEach(items, id: \.self) { item in
-                Text(item)
+            if let noneText {
+                Toggle(noneText, isOn: hasNone(noneText))
             }
-            .onDelete { items.remove(atOffsets: $0) }
 
-            HStack {
-                TextField(placeholder, text: $newItem)
-                    .submitLabel(.done)
-                    .onSubmit(add)
-                Button("Agregar", systemImage: "plus.circle.fill", action: add)
-                    .labelStyle(.iconOnly)
-                    .font(.title3)
-                    .buttonStyle(.borderless)
-                    .disabled(newItem.trimmingCharacters(in: .whitespaces).isEmpty)
+            if !isNone {
+                ForEach(items, id: \.self) { item in
+                    Text(item)
+                }
+                .onDelete { items.remove(atOffsets: $0) }
+
+                HStack {
+                    TextField(placeholder, text: $newItem)
+                        .submitLabel(.done)
+                        .onSubmit(add)
+                    Button("Agregar", systemImage: "plus.circle.fill", action: add)
+                        .labelStyle(.iconOnly)
+                        .font(.title3)
+                        .buttonStyle(.borderless)
+                        .disabled(newItem.trimmingCharacters(in: .whitespaces).isEmpty)
+                }
             }
         } header: {
             Text(title)
         } footer: {
             if items.isEmpty {
-                Text("Si no tiene, déjalo vacío.")
+                Text(noneText == nil ? "Si no tiene, déjalo vacío." : "Si no tiene, activa la opción de arriba. Si no lo sabe, déjalo vacío.")
             }
         }
+    }
+
+    private var isNone: Bool {
+        noneText.map { items == [$0] } ?? false
+    }
+
+    private func hasNone(_ text: String) -> Binding<Bool> {
+        Binding(
+            get: { items == [text] },
+            set: { on in withAnimation { items = on ? [text] : [] } }
+        )
     }
 
     private func add() {
