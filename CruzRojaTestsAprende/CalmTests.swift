@@ -64,6 +64,17 @@ struct CalmTests {
         #expect(viewModel.messages.first?.text == "Entiendo que el examen te tiene así. ¿Qué es lo que más te preocupa que pase?")
     }
 
+    @Test("Si la IA escribe una primera pregunta con lo que conto la persona, se usa en vez de la fija")
+    func intakeUsesAIFirstQuestion() async {
+        companion.assessment = CalmAssessment(intensity: 7, trigger: "examen", technique: .reframing,
+                                              message: "Entiendo.", source: .ai,
+                                              firstQuestion: "¿Qué es lo que más te asusta del examen?")
+        let viewModel = makeViewModel()
+        await tell("tengo examen", to: viewModel)
+        #expect(viewModel.assessment?.firstQuestion == "¿Qué es lo que más te asusta del examen?")
+        #expect(viewModel.messages.first?.text == "Entiendo. ¿Qué es lo que más te asusta del examen?")
+    }
+
     @Test("Si la IA elige respirar, empieza la respiracion y luego el anclaje")
     func breathingTechniqueThenGrounding() async {
         companion.assessment = CalmAssessment(intensity: 9, trigger: "", technique: .breathing,

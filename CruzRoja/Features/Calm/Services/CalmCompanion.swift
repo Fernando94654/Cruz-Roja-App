@@ -40,7 +40,9 @@ enum CalmScript {
         } else {
             intro = assessment?.message ?? "Estoy aquí contigo. Vamos paso a paso, sin prisa."
         }
-        return "\(intro) \(technique.steps[0].request)"
+        // Si la IA escribio una primera pregunta con lo que conto la persona, se usa esa
+        let question = assessment?.firstQuestion ?? technique.steps[0].request
+        return "\(intro) \(question)"
     }
 }
 
@@ -204,6 +206,9 @@ struct CalmAssessmentDraft {
 
     @Guide(description: "Una o dos oraciones cálidas en español: valida lo que siente con tus propias palabras, sin repetir lo que dijo, y di qué van a hacer juntos. Sin preguntas.")
     var message: String
+
+    @Guide(description: "La primera pregunta del ejercicio, en español y en una oración, conectada con lo que contó la persona. Con 'reencuadre': pregúntale qué es lo que más le preocupa que pase, refiriéndote a su situación con tus palabras. Con 'respiracion' o 'anclaje': pídele que mire a su alrededor y te diga tres cosas que vea, ligándolo al lugar donde está si lo mencionó. No inventes detalles que no dijo.")
+    var firstQuestion: String
 }
 
 @available(iOS 26.0, *)
@@ -231,9 +236,10 @@ final class FoundationModelCalmCompanion: CalmModelCompanioning {
         estar teniendo un ataque de pánico o mucha ansiedad. Primero entiendes qué le pasa, después la \
         guías paso a paso con una técnica y al final le dejas un plan. Responde siempre en español, con \
         calidez y calma, en una o dos oraciones cortas, porque tus respuestas se leen en voz alta. Habla \
-        como una persona tranquila, no como un cuestionario. No repitas ni resumas lo que la persona dijo: \
-        si quieres validarla, hazlo con tus propias palabras y de forma variada, o pasa directo a la \
-        siguiente pregunta. Haz una sola pregunta a la vez. No diagnostiques, no hables de medicamentos y \
+        como una persona tranquila que de verdad escucha, no como un cuestionario: tus preguntas se \
+        conectan con lo que la persona ha contado (su situación, el lugar donde está, lo que siente). \
+        No repitas su frase ni la resumas; puedes retomar un detalle con tus propias palabras para que \
+        sepa que la escuchaste. Varía cómo empiezas cada mensaje. Haz una sola pregunta a la vez. No diagnostiques, no hables de medicamentos y \
         no des consejos médicos. No uses listas ni emojis.
         """
 
@@ -260,22 +266,35 @@ final class FoundationModelCalmCompanion: CalmModelCompanioning {
         default: .breathing
         }
         let message = CalmReplyCleaner.clean(draft.message) ?? ""
+        let firstQuestion = CalmReplyCleaner.clean(draft.firstQuestion).flatMap { $0.count <= 200 ? $0 : nil }
         if !draft.trigger.isEmpty { context += " Lo que la detonó: \(draft.trigger)." }
+        if let firstQuestion { context += " Tu primera pregunta del ejercicio fue: «\(firstQuestion)»." }
         return CalmAssessment(intensity: min(max(draft.intensity, 1), 10),
                               trigger: draft.trigger.trimmingCharacters(in: .whitespacesAndNewlines),
                               technique: technique,
                               message: message.isEmpty ? ScriptedCalmCompanion.message(for: technique) : message,
-                              source: .ai)
+                              source: .ai,
+                              firstQuestion: firstQuestion)
     }
 
     func replyIfPossible(to text: String, answered step: CalmStep, next: CalmStep?, technique: CalmTechnique) async -> CalmReply? {
-        let nextInstruction = next.map { "Responde de forma breve y natural, sin repetir lo que dijo, y después pide esto con tus palabras: \($0.request)" }
-            ?? "Ya terminó el ejercicio: felicítala, invítala a respirar profundo una vez más y dile que toque Terminar cuando quiera."
-        let prompt = "Técnica: \(technique.title). Se le pidió: \(step.request)\nLa persona dijo: «\(text)»\n\(nextInstruction)"
+        let nextInstruction = next.map {
+            """
+            Primero reacciona en una frase corta a algo concreto de su respuesta. Si dice que sigue muy mal \
+            o habla de otra cosa que le pesa, atiende eso primero. Después escribe tu propia pregunta con este \
+            objetivo: \($0.goal). Que la pregunta se relacione con lo que ha contado hasta ahora y no sea \
+            genérica. Termina con esa pregunta.
+            """
+        } ?? "Ya terminó el ejercicio: reconoce algo concreto de lo que compartió, invítala a respirar profundo una vez más y dile que toque Terminar cuando quiera."
+        let prompt = "Técnica: \(technique.title). Objetivo de este paso: \(step.goal).\nLa persona respondió: «\(text)»\n\(nextInstruction)"
         let session = conversationSession()
         guard let answer = await run("reply", { try await session.respond(to: prompt).content }),
               let cleaned = CalmReplyCleaner.clean(answer)
         else { return nil }
+        // Si la IA olvido hacer la siguiente pregunta, se agrega la fija para que el ejercicio no se trabe
+        if let next, !cleaned.contains("?") {
+            return CalmReply(text: "\(cleaned) \(next.request)", source: .ai)
+        }
         return CalmReply(text: cleaned, source: .ai)
     }
 

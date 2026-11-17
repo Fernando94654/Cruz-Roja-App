@@ -96,7 +96,8 @@ final class CalmViewModel {
         // Si la IA propone una causa que la persona no menciono, se descarta
         if !CalmGrounding.isMentioned(result.trigger, in: [text]) {
             result = CalmAssessment(intensity: result.intensity, trigger: "", technique: result.technique,
-                                    message: result.message, source: result.source)
+                                    message: result.message, source: result.source,
+                                    firstQuestion: result.firstQuestion)
         }
         // En la respiracion el mensaje se muestra en pantalla; leerlo lo cortaria la voz de "Inhala"
         assessment = result

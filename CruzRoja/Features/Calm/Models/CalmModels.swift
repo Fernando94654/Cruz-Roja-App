@@ -47,8 +47,10 @@ struct BreathingPattern: Equatable, Sendable {
     }
 }
 
-// Un paso de la conversacion: lo que el acompañante le pide a la persona
+// Un paso de la conversacion: para que sirve y la pregunta fija que se usa si no hay IA
 struct CalmStep: Equatable, Sendable {
+    // Lo que se busca con el paso; la IA escribe su propia pregunta con este objetivo
+    let goal: String
     let request: String
 }
 
@@ -75,15 +77,21 @@ enum CalmTechnique: String, CaseIterable, Codable, Sendable {
         case .breathing, .grounding:
             // Version corta del anclaje: lo que ves, lo que escuchas y tu cuerpo en el lugar
             [
-                CalmStep(request: "Mira a tu alrededor y dime 3 cosas que veas."),
-                CalmStep(request: "Ahora pon atención a los sonidos. ¿Qué escuchas?"),
-                CalmStep(request: "Siente tus pies apoyados en el suelo. ¿Cómo los sientes?"),
+                CalmStep(goal: "que mire a su alrededor y nombre tres cosas que ve",
+                         request: "Mira a tu alrededor y dime 3 cosas que veas."),
+                CalmStep(goal: "que ponga atención a los sonidos que hay donde está y diga cuáles escucha",
+                         request: "Ahora pon atención a los sonidos. ¿Qué escuchas?"),
+                CalmStep(goal: "que sienta su cuerpo apoyado (los pies en el suelo o donde está sentada) y diga cómo lo siente",
+                         request: "Siente tus pies apoyados en el suelo. ¿Cómo los sientes?"),
             ]
         case .reframing:
             [
-                CalmStep(request: "¿Qué es lo que más te preocupa que pase?"),
-                CalmStep(request: "De eso, ¿qué sí está en tus manos y qué no depende de ti?"),
-                CalmStep(request: "¿Cuál es un paso pequeño que podrías dar hoy?"),
+                CalmStep(goal: "que diga qué es lo que más le preocupa que pase con su situación",
+                         request: "¿Qué es lo que más te preocupa que pase?"),
+                CalmStep(goal: "que separe, de eso que le preocupa, lo que sí está en sus manos de lo que no depende de ella",
+                         request: "De eso, ¿qué sí está en tus manos y qué no depende de ti?"),
+                CalmStep(goal: "que piense un paso pequeño y concreto que podría dar hoy sobre lo que sí está en sus manos",
+                         request: "¿Cuál es un paso pequeño que podrías dar hoy?"),
             ]
         }
     }
@@ -104,6 +112,8 @@ struct CalmAssessment: Equatable, Sendable {
     // Mensaje calido que explica que van a hacer juntos
     let message: String
     let source: Source
+    // Primera pregunta del ejercicio escrita por la IA con lo que conto la persona; nil usa la fija
+    var firstQuestion: String? = nil
 }
 
 // Plan que se muestra al terminar y se guarda para la proxima vez
