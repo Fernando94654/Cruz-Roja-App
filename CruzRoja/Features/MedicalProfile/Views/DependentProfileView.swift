@@ -170,6 +170,7 @@ struct EditDependentView: View {
     var body: some View {
         NavigationStack {
             Form {
+                ProfileDictationSection(draft: $draft.profile, hasDateOfBirth: $hasDateOfBirth)
                 MedicalProfileFormSections(
                     draft: $draft.profile,
                     hasDateOfBirth: $hasDateOfBirth,

@@ -92,6 +92,53 @@ struct CruzRojaTestsPerfilMedico {
         #expect(MedicalProfile.text(for: []) == "Sin información")
     }
 
+    // TC-PM-11
+    @Test("Las palabras clave acomodan lo dictado en cada campo")
+    func dictationRules() {
+        let fields = RuleBasedProfileExtractor().fields(from:
+            "Tengo 70 años, mi sangre es O positivo, soy diabético e hipertenso, soy alérgico a la penicilina y al látex, tomo metformina y losartán")
+
+        #expect(fields.age == 70)
+        #expect(fields.bloodType == .oPositive)
+        #expect(fields.allergies == ["Penicilina", "Látex"])
+        #expect(fields.conditions == ["Diabetes", "Hipertensión"])
+        #expect(fields.medications == ["Metformina", "Losartán"])
+    }
+
+    // TC-PM-12
+    @Test("Lo dictado se agrega sin borrar ni repetir lo que ya había")
+    func dictationMergeKeepsExistingData() {
+        var profile = MedicalProfile.sample   // ya tiene Asma y alergia a Penicilina
+        profile.medications = [MedicalProfile.noMedications]
+        var fields = ProfileFields()
+        fields.allergies = ["penicilina", "Látex"]
+        fields.conditions = ["Diabetes"]
+        fields.medications = ["Metformina"]
+
+        let result = profile.merging(fields)
+
+        #expect(result.profile.allergies == ["Penicilina", "Látex"])
+        #expect(result.profile.conditions == ["Asma", "Diabetes"])
+        #expect(result.profile.medications == ["Metformina"])
+        #expect(result.profile.fullName == "María López")
+        #expect(result.added.count == 3)
+    }
+
+    // TC-PM-13
+    @Test("La fecha de nacimiento dictada se llena; con solo la edad se pone una fecha aproximada")
+    func dictationBirthDateAndAge() {
+        let exact = RuleBasedProfileExtractor().fields(from: "Nací el 14 de marzo de 1958")
+        #expect(exact.dateOfBirth == ProfileFields.birthDate(day: 14, month: 3, year: 1958))
+
+        var empty = MedicalProfile()
+        empty.fullName = "Rosa"
+        var onlyAge = ProfileFields()
+        onlyAge.age = 70
+        let result = empty.merging(onlyAge)
+        #expect(result.profile.age() == 70)
+        #expect(result.ageNote != nil)
+    }
+
     // TC-PM-09
     @Test("El reporte para un familiar guardado lleva su perfil médico")
     func familyReportSendsDependentProfile() async {

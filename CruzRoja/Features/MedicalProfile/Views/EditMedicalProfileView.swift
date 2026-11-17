@@ -16,6 +16,7 @@ struct EditMedicalProfileView: View {
     var body: some View {
         NavigationStack {
             Form {
+                ProfileDictationSection(draft: $draft, hasDateOfBirth: $hasDateOfBirth)
                 MedicalProfileFormSections(draft: $draft, hasDateOfBirth: $hasDateOfBirth)
             }
             .navigationTitle(viewModel.profile == nil ? "Nuevo perfil" : "Editar perfil")
