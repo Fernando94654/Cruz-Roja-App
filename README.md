@@ -64,6 +64,58 @@ uvicorn app.main:app --reload
 
 Then open `CruzRoja.xcodeproj` in Xcode and run the app. Tests run with Cmd + U in Xcode, and with `pytest` in `backend/` (see [backend/README.md](backend/README.md)).
 
+## Try it
+
+- API: https://cruz-roja-app.onrender.com (interactive docs at [`/docs`](https://cruz-roja-app.onrender.com/docs), status at [`/health`](https://cruz-roja-app.onrender.com/health)). The app already points to it in `CruzRoja/Core/Networking/APIConfig.swift`.
+- Test account: `user@example.com` / `demo1234` (María López, with medical profile, family circle and a dependent).
+- The free Render instance sleeps after 15 minutes without traffic; open `/health` and wait about a minute before using the app.
+
+## Stack
+
+| Part | Technology |
+|---|---|
+| iOS app | Swift 6, SwiftUI (MVVM), Foundation Models, Speech, Core Location, MapKit, Vision, Core ML, Swift Testing |
+| API | Python 3.12, FastAPI, SQLAlchemy 2, GeoAlchemy2, Alembic, Pydantic, JWT, argon2, Fernet encryption, pytest |
+| Database | PostgreSQL with PostGIS on Supabase (row level security on every table) |
+| Hosting | Render web service for the API, Supabase for the database |
+
+## Deploy
+
+**Database (Supabase)**
+
+1. Create a project at [supabase.com](https://supabase.com) and enable the `postgis` extension (Database → Extensions).
+2. Copy the **Session pooler** connection string (Connect → Session pooler). Change `postgresql://` to `postgresql+psycopg://` and add `?sslmode=require`.
+3. From your machine, apply the migrations:
+
+   ```bash
+   cd backend && source .venv/bin/activate
+   DATABASE_URL="<pooler url>" alembic upgrade head
+   ```
+
+**API (Render)**
+
+1. At [render.com](https://render.com), choose **New → Web Service** and connect this GitHub repository.
+2. Settings:
+   - Branch: `main`
+   - Root directory: `backend`
+   - Runtime: Python 3
+   - Build command: `pip install .`
+   - Start command: `uvicorn app.main:app --host 0.0.0.0 --port $PORT`
+   - Region: Ohio (same as the Supabase region, `us-east-2`)
+   - Instance type: Free
+3. Environment variables:
+
+   | Variable | Value |
+   |---|---|
+   | `DATABASE_URL` | Supabase session pooler URL from step 2 |
+   | `JWT_SECRET` | Random string: `python -c "import secrets; print(secrets.token_urlsafe(48))"` |
+   | `MEDICAL_DATA_KEY` | Fernet key: `python -c "from cryptography.fernet import Fernet; print(Fernet.generate_key().decode())"`. Keep it: without it the stored medical data can't be read |
+   | `PUBLIC_BASE_URL` | The service URL, e.g. `https://cruz-roja-app.onrender.com` (used in the SMS link) |
+   | `PYTHON_VERSION` | `3.12.8` |
+
+4. Click **Create Web Service**. Every push to `main` deploys again.
+5. Check `https://<service>.onrender.com/health` returns `{"status":"ok"}`, then set that URL as `APIConfig.baseURL` in the app.
+
 ## More
 
 - [Architecture](docs/architecture/ARCHITECTURE.md): database, system, app and backend diagrams.
