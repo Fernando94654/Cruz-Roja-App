@@ -1,5 +1,6 @@
 import SwiftUI
 
+/// Form to describe the emergency by typing or dictating.
 struct ReportView: View {
     @Bindable var viewModel: EmergencyReportViewModel
 

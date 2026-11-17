@@ -1,8 +1,6 @@
 import Foundation
 
-// Factory for the family members' profiles.
-// Kept in an extension instead of AppContainer's initializer to avoid merge conflicts with the
-// emergency-report branch, which also edits AppContainer; it can move there once both are merged.
+// Crea el ViewModel de los familiares
 extension AppContainer {
     func makeDependentProfilesViewModel() -> DependentProfilesViewModel {
         if DemoMode.offline || ProcessInfo.processInfo.environment["XCODE_RUNNING_FOR_PREVIEWS"] == "1" {

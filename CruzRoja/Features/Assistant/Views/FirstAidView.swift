@@ -9,6 +9,7 @@ struct FirstAidView: View {
         _viewModel = State(initialValue: viewModel)
     }
 
+    // Chat with the messages on top and the input bar at the bottom
     var body: some View {
         VStack(spacing: 0) {
             ScrollViewReader { proxy in
@@ -56,6 +57,7 @@ struct FirstAidView: View {
         .onDisappear { viewModel.stop() }
     }
 
+    // Shown before the first message: explanation, suggestions and emergency types
     private var intro: some View {
         VStack(alignment: .leading, spacing: 14) {
             Text("Describe la emergencia")
@@ -118,6 +120,7 @@ struct FirstAidView: View {
         }
     }
 
+    // Text field plus the button that sends, starts dictation or stops it and sends
     private var inputBar: some View {
         HStack(spacing: 10) {
             TextField(viewModel.isListening ? "Escuchando…" : "¿Qué está pasando?", text: $viewModel.draft, axis: .vertical)
@@ -173,6 +176,7 @@ struct AnswerCard: View {
 
     private var isSpeaking: Bool { viewModel.speech.isSpeaking }
 
+    // Answer text, the guide to start by voice and its related video
     var body: some View {
         VStack(alignment: .leading, spacing: 12) {
             if let guide = answer.guide {

@@ -5,6 +5,7 @@ from pydantic import BaseModel, Field
 
 
 class EmergencyReportIn(BaseModel):
+    """Report sent by the app, with its location."""
     user_id: uuid.UUID | None = None
     reporting_for: Literal["self", "other"] = "self"
     patient_name: str | None = Field(default=None, max_length=120)
@@ -25,5 +26,6 @@ class EmergencyReportIn(BaseModel):
 
 
 class EmergencyReportCreated(BaseModel):
+    """Id of the stored report and its operator link."""
     id: uuid.UUID
     share_url: str

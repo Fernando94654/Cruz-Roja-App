@@ -1,13 +1,12 @@
 import Foundation
 
+// Trae y guarda el perfil médico
 protocol MedicalProfileServicing: Sendable {
-    // Returns nil when the user has no profile yet
     func fetchProfile(userID: UUID) async throws -> MedicalProfile?
-    // Creates or replaces the profile and returns what was stored
     func saveProfile(_ profile: MedicalProfile, userID: UUID) async throws -> MedicalProfile
 }
 
-// GET and PUT /users/{id}/medical-profile
+// Versión real: se conecta al API
 struct MedicalProfileAPIService: MedicalProfileServicing {
     var client = APIClient()
 
@@ -24,6 +23,7 @@ struct MedicalProfileAPIService: MedicalProfileServicing {
     }
 }
 
+// Versión de prueba: funciona sin el API
 actor MockMedicalProfileService: MedicalProfileServicing {
     private var profile: MedicalProfile?
 

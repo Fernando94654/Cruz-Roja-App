@@ -1,13 +1,4 @@
-"""Medical profiles of people the user looks after (parents, children) who don't use the app.
-
-GET    /users/{user_id}/dependents                  List the user's dependents
-POST   /users/{user_id}/dependents                  Add one (201)
-GET    /users/{user_id}/dependents/{dependent_id}   One dependent
-PUT    /users/{user_id}/dependents/{dependent_id}   Replace it
-DELETE /users/{user_id}/dependents/{dependent_id}   Remove it (204)
-
-A dependent that belongs to another user answers 404, as if it didn't exist.
-"""
+"""Perfiles médicos de los familiares del usuario (máximo 10)."""
 
 import uuid
 
@@ -68,7 +59,6 @@ def apply(db: Session, dependent: DependentProfile, data: DependentProfileIn) ->
     dependent.medications = encrypt_list(data.medications)
     dependent.updated_at = func.now()
 
-    # Contacts are replaced as a whole, same as the user's own profile
     for contact in contacts_of(db, dependent.id):
         db.delete(contact)
     db.add_all(
@@ -77,6 +67,7 @@ def apply(db: Session, dependent: DependentProfile, data: DependentProfileIn) ->
     )
 
 
+# GET: regresa la lista de familiares del usuario
 @router.get("/{user_id}/dependents", response_model=list[DependentProfileOut])
 def list_dependents(user_id: uuid.UUID, db: Session = Depends(get_db)) -> list[DependentProfileOut]:
     get_user(db, user_id)

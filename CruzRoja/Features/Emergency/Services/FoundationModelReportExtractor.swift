@@ -54,10 +54,12 @@ final class FoundationModelReportExtractor: ReportExtracting {
     // A fresh session per report keeps earlier reports out of the context
     private var nextSession: LanguageModelSession?
 
+    /// Loads the model so the first answer is faster.
     func prewarm() {
         session().prewarm()
     }
 
+    /// Asks the model for a ReportDraft and maps it to report fields.
     func extract(_ text: String) async throws -> ExtractedFields {
         let current = session()
         nextSession = nil

@@ -10,6 +10,7 @@ struct GuideView: View {
 
     private var step: GuideStep { viewModel.step }
 
+    // Current step, its indicator and the Anterior / Repetir / Siguiente controls
     var body: some View {
         VStack(alignment: .leading, spacing: 20) {
             VStack(alignment: .leading, spacing: 8) {
@@ -90,6 +91,7 @@ struct GuideView: View {
         .sensoryFeedback(.impact(weight: .heavy), trigger: viewModel.beat)
     }
 
+    // Circle with the step icon, the timer ring and the compression rhythm
     private var indicator: some View {
         ZStack {
             Circle().fill(.gray.opacity(0.12))

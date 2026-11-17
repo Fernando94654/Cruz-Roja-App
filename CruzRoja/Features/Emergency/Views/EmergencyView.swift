@@ -1,6 +1,7 @@
 import MapKit
 import SwiftUI
 
+/// Main emergency screen with the report button.
 struct EmergencyView: View {
     let container: AppContainer
     @State private var path: [EmergencyRoute]
@@ -8,6 +9,7 @@ struct EmergencyView: View {
     @State private var showsCountdown = DemoMode.isActive("countdown")
     @State private var isPressing = false
     @State private var showsConfirmation = DemoMode.isActive("confirm")
+    @State private var showsCalm = false
 
     init(container: AppContainer) {
         self.container = container
@@ -72,6 +74,14 @@ struct EmergencyView: View {
                     Label("Antes de enviar te pediremos confirmar y tendrás 5 segundos para cancelar.", systemImage: "hand.raised")
                         .font(.footnote)
                         .foregroundStyle(.secondary)
+
+                    // Respiracion guiada y acompañante con IA para ataques de panico (Features/Calm)
+                    Button { showsCalm = true } label: {
+                        Label("Necesito calmarme", systemImage: "wind")
+                            .frame(maxWidth: .infinity)
+                    }
+                    .buttonStyle(.bordered)
+                    .tint(.primary)
                 }
                 .padding()
             }
@@ -84,6 +94,11 @@ struct EmergencyView: View {
             Button("Sí, reportar", role: .destructive) { showsCountdown = true }
         } message: {
             Text("Se enviará tu ubicación exacta a Cruz Roja.")
+        }
+        .fullScreenCover(isPresented: $showsCalm) { CalmView() }
+        // Abre Calma cuando se pide desde Siri o Atajos
+        .onChange(of: CalmLauncher.shared.isPending, initial: true) {
+            if CalmLauncher.shared.consume() { showsCalm = true }
         }
         .fullScreenCover(isPresented: $showsCountdown) {
             CountdownView {
@@ -130,6 +145,7 @@ struct EmergencyView: View {
     }
 }
 
+/// Five-second countdown to cancel before reporting.
 struct CountdownView: View {
     var onFinish: () -> Void
     @Environment(\.dismiss) private var dismiss

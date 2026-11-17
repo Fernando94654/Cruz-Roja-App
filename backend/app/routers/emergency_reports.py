@@ -18,12 +18,14 @@ router = APIRouter(tags=["Emergency reports"])
 
 
 def public_base_url(request: Request) -> str:
+    """Base URL used in the operator links."""
     # Set PUBLIC_BASE_URL to an address reachable from the operator's phone (e.g. the LAN IP)
     return os.environ.get("PUBLIC_BASE_URL", str(request.base_url)).rstrip("/")
 
 
 @router.post("/emergency-reports", response_model=EmergencyReportCreated, status_code=status.HTTP_201_CREATED)
 def create_report(data: EmergencyReportIn, request: Request, db: Session = Depends(get_db)) -> EmergencyReportCreated:
+    """Store an emergency report and return its operator link."""
     fields = data.model_dump(exclude={"reporting_for", "summary", "latitude", "longitude"})
     report = EmergencyReport(
         **fields,
@@ -41,6 +43,7 @@ def create_report(data: EmergencyReportIn, request: Request, db: Session = Depen
 
 @router.get("/r/{token}", response_class=HTMLResponse, include_in_schema=False)
 def operator_page(token: str, db: Session = Depends(get_db)) -> str:
+    """Show the operator page for a shared report."""
     point = cast(EmergencyReport.location, Geometry)
     row = db.execute(
         select(EmergencyReport, func.ST_Y(point), func.ST_X(point)).where(EmergencyReport.share_token == token)
@@ -52,6 +55,7 @@ def operator_page(token: str, db: Session = Depends(get_db)) -> str:
 
 
 def render_operator_page(report: EmergencyReport, lat: float, lng: float) -> str:
+    """Render the report, map and medical summary as HTML."""
     rows = [
         ("Para", report.patient_name or ("La persona que reporta" if report.reporting_for == ReportingFor.self else "Otra persona")),
         ("Motivo", report.reason),

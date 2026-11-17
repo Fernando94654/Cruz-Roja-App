@@ -10,11 +10,13 @@ from app.models.common import point, timestamp_now, uuid_pk
 
 
 class ReportingFor(enum.Enum):
+    """Whether the report is for the user or someone else."""
     self = "self"
     other = "other"
 
 
 class ReportStatus(enum.Enum):
+    """Lifecycle of an emergency report."""
     draft = "draft"
     sent = "sent"
     received = "received"
@@ -23,6 +25,7 @@ class ReportStatus(enum.Enum):
 
 
 class EmergencyReport(Base):
+    """Emergency report with its fields, location and share token."""
     __tablename__ = "emergency_reports"
     __table_args__ = (
         CheckConstraint("injured_count >= 0", name="injured_count_non_negative"),

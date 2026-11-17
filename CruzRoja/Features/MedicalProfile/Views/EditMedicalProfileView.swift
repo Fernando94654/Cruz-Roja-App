@@ -1,6 +1,6 @@
 import SwiftUI
 
-// Edits a draft copy; nothing is stored until "Guardar"
+// Formulario para editar mi perfil
 struct EditMedicalProfileView: View {
     @Environment(\.dismiss) private var dismiss
     @State private var draft: MedicalProfile

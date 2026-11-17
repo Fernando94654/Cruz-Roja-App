@@ -1,24 +1,29 @@
-"""Official alerts and neighbor reports.
+"""Endpoints de alertas oficiales y reportes de vecinos.
 
-GET  /alerts/official                    Official alerts in effect (SMN, Protección Civil); read-only
-GET  /alerts/reports                     Neighbor reports that haven't expired or been flagged as false
-POST /alerts/reports                     Publish a report (201); it expires after REPORT_HOURS
-POST   /alerts/reports/{report_id}/confirm Confirm someone else's report
-DELETE /alerts/reports/{report_id}/confirm Take the confirmation back
-POST   /alerts/reports/{report_id}/flag    Mark a report as false
-DELETE /alerts/reports/{report_id}/flag    Take the flag back
+GET    /alerts/official                     Alertas oficiales vigentes (SMN, Proteccion Civil), solo lectura;
+                                             cada SYNC_MINUTES importa en segundo plano los avisos nuevos del SMN
+GET    /alerts/official/near/{lat}/{lon}    Solo las alertas oficiales cuya zona incluye esa ubicacion
+GET    /alerts/reports                      Reportes vigentes que no alcanzan el limite de marcas de falso
+GET    /alerts/reports/near/{lat}/{lon}     Los mismos reportes, solo a REPORT_RADIUS_KM de esa ubicacion
+POST   /alerts/reports                      Publica un reporte que expira despues de REPORT_HOURS
+POST   /alerts/reports/{report_id}/confirm  Confirma el reporte de otro usuario
+DELETE /alerts/reports/{report_id}/confirm  Elimina la confirmacion del usuario
+POST   /alerts/reports/{report_id}/flag     Marca un reporte como falso
+DELETE /alerts/reports/{report_id}/flag     Elimina la marca de falso del usuario
 
-Each user has one vote per report: confirming removes their flag and flagging removes their confirmation.
-Official alerts are loaded by the system, never by users. Reports never say who published them.
+Cada usuario tiene un solo voto por reporte: confirmar elimina su marca de falso y viceversa.
+Las alertas oficiales solo las registra el sistema y nunca se expone quien publico un reporte.
 """
 
 import uuid
 from datetime import datetime, timedelta, timezone
+from typing import Annotated
 
-from fastapi import APIRouter, Depends, HTTPException, status
+from fastapi import APIRouter, BackgroundTasks, Depends, HTTPException, Path, status
 from sqlalchemy import delete, func, or_, select
 from sqlalchemy.orm import Session
 
+from app import smn_alerts
 from app.auth import get_current_user
 from app.deps import get_db
 from app.models import CommunityReport, CommunityReportConfirmation, OfficialAlert, User
@@ -27,8 +32,11 @@ from app.schemas.alerts import CommunityReportIn, CommunityReportOut, OfficialAl
 
 router = APIRouter(prefix="/alerts", tags=["Alerts"])
 
+# Duracion de un reporte y numero de marcas de falso necesarias para ocultarlo
 REPORT_HOURS = 4
 FLAG_LIMIT = 3
+# Distancia maxima a la que se muestran los reportes de vecinos
+REPORT_RADIUS_KM = 5
 
 
 def now() -> datetime:
@@ -47,6 +55,7 @@ def remove_vote(db: Session, model, report_id: uuid.UUID, user_id: uuid.UUID) ->
     db.execute(delete(model).where(model.report_id == report_id, model.user_id == user_id))
 
 
+# Convierte un reporte de la base de datos al formato de respuesta, con los votos del usuario actual
 def to_out(db: Session, report: CommunityReport, me: User) -> CommunityReportOut:
     return CommunityReportOut(
         id=report.id,
@@ -61,6 +70,7 @@ def to_out(db: Session, report: CommunityReport, me: User) -> CommunityReportOut
     )
 
 
+# Regresa 404 si el reporte no existe, ya expiro o fue ocultado por marcas de falso
 def get_active_report(db: Session, report_id: uuid.UUID) -> CommunityReport:
     report = db.get(CommunityReport, report_id)
     if report is None or report.expires_at <= now() or count_of(db, CommunityReportFlag, report.id) >= FLAG_LIMIT:
@@ -68,13 +78,20 @@ def get_active_report(db: Session, report_id: uuid.UUID) -> CommunityReport:
     return report
 
 
-@router.get("/official", response_model=list[OfficialAlertOut])
-def list_official_alerts(db: Session = Depends(get_db)) -> list[OfficialAlertOut]:
+# Punto geografico a partir de las coordenadas que manda la app
+def nearby(latitude: float, longitude: float):
+    return func.ST_GeogFromText(f"SRID=4326;POINT({longitude} {latitude})")
+
+
+# Alertas que ya iniciaron y no han expirado; con coordenadas, solo las cuya zona contiene ese punto
+def official_alerts(db: Session, latitude: float | None = None, longitude: float | None = None) -> list[OfficialAlertOut]:
     query = (
         select(OfficialAlert)
         .where(OfficialAlert.starts_at <= now(), or_(OfficialAlert.expires_at.is_(None), OfficialAlert.expires_at > now()))
         .order_by(OfficialAlert.starts_at.desc())
     )
+    if latitude is not None and longitude is not None:
+        query = query.where(func.ST_Intersects(OfficialAlert.area, nearby(latitude, longitude)))
     return [
         OfficialAlertOut(
             id=a.id,
@@ -89,15 +106,51 @@ def list_official_alerts(db: Session = Depends(get_db)) -> list[OfficialAlertOut
     ]
 
 
-@router.get("/reports", response_model=list[CommunityReportOut])
-def list_reports(me: User = Depends(get_current_user), db: Session = Depends(get_db)) -> list[CommunityReportOut]:
+@router.get("/official", response_model=list[OfficialAlertOut])
+def list_official_alerts(background: BackgroundTasks, db: Session = Depends(get_db)) -> list[OfficialAlertOut]:
+    # Se responde con lo que ya esta guardado y despues se buscan avisos nuevos del SMN, asi la app no espera
+    background.add_task(smn_alerts.sync_if_due)
+    return official_alerts(db)
+
+
+# Las coordenadas van en la ruta porque el APIClient de la app no envia parametros de consulta
+@router.get("/official/near/{latitude}/{longitude}", response_model=list[OfficialAlertOut])
+def list_official_alerts_near(
+    background: BackgroundTasks,
+    latitude: Annotated[float, Path(ge=-90, le=90)],
+    longitude: Annotated[float, Path(ge=-180, le=180)],
+    db: Session = Depends(get_db),
+) -> list[OfficialAlertOut]:
+    background.add_task(smn_alerts.sync_if_due)
+    return official_alerts(db, latitude, longitude)
+
+
+# Reportes vigentes que no alcanzan el limite de marcas de falso; con coordenadas, solo los de REPORT_RADIUS_KM a la redonda
+def active_reports(db: Session, me: User, latitude: float | None = None, longitude: float | None = None) -> list[CommunityReportOut]:
     query = (
         select(CommunityReport)
         .where(CommunityReport.expires_at > now())
         .order_by(CommunityReport.created_at.desc())
     )
+    if latitude is not None and longitude is not None:
+        query = query.where(func.ST_DWithin(CommunityReport.location, nearby(latitude, longitude), REPORT_RADIUS_KM * 1000))
     reports = [to_out(db, r, me) for r in db.scalars(query)]
     return [r for r in reports if r.flags < FLAG_LIMIT]
+
+
+@router.get("/reports", response_model=list[CommunityReportOut])
+def list_reports(me: User = Depends(get_current_user), db: Session = Depends(get_db)) -> list[CommunityReportOut]:
+    return active_reports(db, me)
+
+
+@router.get("/reports/near/{latitude}/{longitude}", response_model=list[CommunityReportOut])
+def list_reports_near(
+    latitude: Annotated[float, Path(ge=-90, le=90)],
+    longitude: Annotated[float, Path(ge=-180, le=180)],
+    me: User = Depends(get_current_user),
+    db: Session = Depends(get_db),
+) -> list[CommunityReportOut]:
+    return active_reports(db, me, latitude, longitude)
 
 
 @router.post("/reports", response_model=CommunityReportOut, status_code=status.HTTP_201_CREATED)
@@ -122,10 +175,11 @@ def confirm_report(
     report_id: uuid.UUID, me: User = Depends(get_current_user), db: Session = Depends(get_db)
 ) -> CommunityReportOut:
     report = get_active_report(db, report_id)
+    # Un usuario no puede confirmar su propio reporte
     if report.user_id == me.id:
         raise HTTPException(status.HTTP_409_CONFLICT, detail="No puedes confirmar tu propio reporte")
     remove_vote(db, CommunityReportFlag, report.id, me.id)
-    # Confirming twice is ignored, so a retry after a network error is safe
+    # Una segunda confirmacion del mismo usuario se ignora, asi la operacion se puede repetir sin duplicar votos
     if not done_by(db, CommunityReportConfirmation, report.id, me.id):
         db.add(CommunityReportConfirmation(report_id=report.id, user_id=me.id))
     db.commit()

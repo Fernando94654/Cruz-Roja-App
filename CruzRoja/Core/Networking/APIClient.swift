@@ -33,22 +33,27 @@ struct APIClient: Sendable {
         return try decode(data)
     }
 
+    // Sends a JSON body with PUT and decodes the response
     func put<Body: Encodable, Response: Decodable>(_ path: String, body: Body, as type: Response.Type = Response.self) async throws -> Response {
         try await send("PUT", path, body: body)
     }
 
+    // Sends a JSON body with POST and decodes the response
     func post<Body: Encodable, Response: Decodable>(_ path: String, body: Body, as type: Response.Type = Response.self) async throws -> Response {
         try await send("POST", path, body: body)
     }
 
+    // POST without a body
     func post<Response: Decodable>(_ path: String, as type: Response.Type = Response.self) async throws -> Response {
         try await send("POST", path, body: Optional<String>.none)
     }
 
+    // DELETE that returns a JSON body
     func delete<Response: Decodable>(_ path: String, as type: Response.Type = Response.self) async throws -> Response {
         try await send("DELETE", path, body: Optional<String>.none)
     }
 
+    // Builds the request with its method and JSON body, then checks and decodes the answer
     private func send<Body: Encodable, Response: Decodable>(_ method: String, _ path: String, body: Body?) async throws -> Response {
         var request = URLRequest(url: baseURL.appending(path: path), timeoutInterval: APIConfig.timeout)
         request.httpMethod = method
@@ -61,6 +66,7 @@ struct APIClient: Sendable {
         return try decode(data)
     }
 
+    // Adds the sign-in token and turns network failures into APIError.offline
     private func send(_ request: URLRequest) async throws -> (Data, HTTPURLResponse) {
         var request = request
         if let token = AuthToken.current {
@@ -75,6 +81,7 @@ struct APIClient: Sendable {
         }
     }
 
+    // Accepts 2xx; 422 becomes a validation message, anything else a server error
     private func verify(_ response: HTTPURLResponse, _ data: Data) throws {
         switch response.statusCode {
         case 200..<300:
@@ -86,6 +93,7 @@ struct APIClient: Sendable {
         }
     }
 
+    // Decodes the JSON with ISO 8601 dates; bad JSON becomes invalidResponse
     private func decode<Response: Decodable>(_ data: Data) throws -> Response {
         do {
             let decoder = JSONDecoder()

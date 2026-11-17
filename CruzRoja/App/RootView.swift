@@ -36,7 +36,11 @@ struct RootView: View {
                 .tag(AppTab.profile)
         }
         .tint(Color.brandRed)
-        .task { await container.refreshGuides() }
+        .task {
+            async let guides: Void = container.refreshGuides()
+            async let knowledge: Void = container.refreshKnowledge()
+            _ = await (guides, knowledge)
+        }
     }
 }
 

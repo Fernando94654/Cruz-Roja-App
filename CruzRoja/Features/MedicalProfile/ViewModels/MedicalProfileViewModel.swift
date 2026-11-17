@@ -1,6 +1,7 @@
 import Foundation
 import Observation
 
+// Controla la pantalla de Mi perfil
 @MainActor
 @Observable
 final class MedicalProfileViewModel {
@@ -13,7 +14,6 @@ final class MedicalProfileViewModel {
 
     private(set) var profile: MedicalProfile?
     private(set) var state: State = .loading
-    // True when offline and showing the cached copy
     private(set) var isShowingCachedCopy = false
     private(set) var isSaving = false
     var errorMessage: String?
@@ -28,7 +28,7 @@ final class MedicalProfileViewModel {
         self.userID = userID
     }
 
-    // Shows the cached copy right away, then refreshes from the API
+    // Muestra primero la copia guardada y luego la actualiza desde el API
     func load() async {
         if profile == nil {
             profile = cache.load()
@@ -57,7 +57,7 @@ final class MedicalProfileViewModel {
         }
     }
 
-    // Returns true when saved so the editor can close
+    // Guarda el perfil en el API
     @discardableResult
     func save(_ draft: MedicalProfile) async -> Bool {
         let cleaned = draft.cleaned()
