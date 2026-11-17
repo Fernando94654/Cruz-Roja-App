@@ -168,6 +168,7 @@ final class AppContainer {
             locationProvider: locationProvider,
             dictation: dictationFactory(),
             medicalSummary: { cache.load()?.reportSummary },
+            savedDependents: { Self.savedDependents() },
             onSent: { ambulance.request() }
         )
     }

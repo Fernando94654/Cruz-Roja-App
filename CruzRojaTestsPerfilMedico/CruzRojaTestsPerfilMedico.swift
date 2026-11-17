@@ -12,6 +12,16 @@ private struct OfflineDependentsService: DependentProfilesServicing {
     func deleteDependent(id: UUID) async throws { throw APIError.offline }
 }
 
+// Guarda el resumen médico que se envía con cada reporte
+private actor RecordingReportService: EmergencyReportServicing {
+    var medicalSummaries: [String?] = []
+
+    func send(_ report: EmergencyReport, location: EmergencyLocation, summary: String, medicalSummary: String?) async throws -> SentReport {
+        medicalSummaries.append(medicalSummary)
+        return SentReport(id: "1", shareURL: "http://localhost:8000/r/abc")
+    }
+}
+
 private func emptyCache() -> DependentProfilesCache {
     DependentProfilesCache(directory: FileManager.default.temporaryDirectory.appending(path: UUID().uuidString))
 }
@@ -65,5 +75,29 @@ struct CruzRojaTestsPerfilMedico {
 
         #expect(viewModel.profile == nil)
         #expect(cache.load() == nil)
+    }
+
+    // TC-PM-09
+    @Test("El reporte para un familiar guardado lleva su perfil médico")
+    func familyReportSendsDependentProfile() async {
+        let grandma = DependentProfile.sample
+        let service = RecordingReportService()
+        let location = EmergencyLocation(coordinate: .monterrey, address: "Av. Eugenio Garza Sada 2501", accuracyMeters: 5)
+        let viewModel = EmergencyReportViewModel(
+            report: EmergencyReport(reportingFor: .familyMember),
+            location: location,
+            service: service,
+            extractor: RuleBasedReportExtractor(),
+            locationProvider: FixedLocationProvider(),
+            dictation: SilentDictation(),
+            medicalSummary: { "Mi perfil" },
+            savedDependents: { [grandma] }
+        )
+
+        viewModel.selectDependent(grandma.id)
+        #expect(await viewModel.send())
+
+        #expect(viewModel.report.patientName == "Rosa Martínez")
+        #expect(await service.medicalSummaries == [grandma.profile.reportSummary])
     }
 }

@@ -24,6 +24,8 @@ enum ReportingFor: CaseIterable, Hashable, Sendable {
 struct EmergencyReport: Hashable, Sendable {
     var reportingFor: ReportingFor = .myself
     var patientName: String?
+    // Familiar guardado en Perfil > Familiares; su perfil médico se envía con el reporte
+    var dependentID: UUID?
     // Free text typed or dictated by the user
     var description = ""
     var reason = ""
