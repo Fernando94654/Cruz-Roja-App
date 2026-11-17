@@ -21,6 +21,9 @@ final class AppContainer {
     private let lessonsService: LessonsServicing
     private let guidesService: GuidesServicing
     private let guideCache: GuideCache
+    private let knowledgeService: KnowledgeServicing
+    private let knowledgeCache: KnowledgeCache
+    private let knowledgeRetriever: KnowledgeRetriever
 
     // Receives every service; defaults to mocks so previews and tests need no server
     init(
@@ -41,7 +44,9 @@ final class AppContainer {
         lessonProgressService: LessonProgressServicing = MockLessonProgressService(),
         lessonProgressStore: LessonProgressStore = LessonProgressStore(),
         guidesService: GuidesServicing = MockGuidesService(),
-        guideCache: GuideCache = GuideCache()
+        guideCache: GuideCache = GuideCache(),
+        knowledgeService: KnowledgeServicing = MockKnowledgeService(),
+        knowledgeCache: KnowledgeCache = KnowledgeCache()
     ) {
         self.session = session
         self.speech = speech
@@ -53,13 +58,20 @@ final class AppContainer {
         self.medicalProfileCache = medicalProfileCache
         self.emergencyReportService = emergencyReportService
         self.reportExtractor = reportExtractor ?? RuleBasedReportExtractor()
-        self.firstAidAssistant = firstAidAssistant ?? KeywordFirstAidAssistant(guides: { guideCache.load() })
+        let knowledgeRetriever = KnowledgeRetriever(cache: knowledgeCache)
+        self.firstAidAssistant = firstAidAssistant ?? RAGFirstAidAssistant(
+            retriever: knowledgeRetriever,
+            fallback: KeywordFirstAidAssistant(delay: .zero, guides: { guideCache.load() })
+        )
         self.alertsService = alertsService
         self.familyService = familyService
         self.lessonsService = lessonsService
         self.lessonProgress = LessonProgress(service: lessonProgressService, store: lessonProgressStore)
         self.guidesService = guidesService
         self.guideCache = guideCache
+        self.knowledgeService = knowledgeService
+        self.knowledgeCache = knowledgeCache
+        self.knowledgeRetriever = knowledgeRetriever
     }
 
     static let live = DemoMode.offline ? offline : online
@@ -89,7 +101,8 @@ final class AppContainer {
         familyService: DemoMode.isActive("family") ? MockFamilyService() : FamilyAPIService(),
         lessonsService: LessonsAPIService(),
         lessonProgressService: DemoMode.isActive("learn", "lesson") ? MockLessonProgressService() : LessonProgressAPIService(),
-        guidesService: GuidesAPIService()
+        guidesService: GuidesAPIService(),
+        knowledgeService: KnowledgeAPIService()
     )
 
     static let preview = AppContainer(
@@ -108,7 +121,9 @@ final class AppContainer {
         lessonProgressService: LessonProgressAPIService(),
         lessonProgressStore: LessonProgressStore(defaults: UserDefaults(suiteName: "preview") ?? .standard),
         guidesService: GuidesAPIService(),
-        guideCache: GuideCache(directory: FileManager.default.temporaryDirectory)
+        guideCache: GuideCache(directory: FileManager.default.temporaryDirectory),
+        knowledgeService: KnowledgeAPIService(),
+        knowledgeCache: KnowledgeCache(directory: FileManager.default.temporaryDirectory)
     )
 
     var guides: [FirstAidGuide] { guideCache.load() }
@@ -117,6 +132,14 @@ final class AppContainer {
     func refreshGuides() async {
         guard let guides = try? await guidesService.fetchGuides() else { return }
         guideCache.save(guides)
+    }
+
+    // Downloads the latest texts and loads the model so the first question is fast
+    func refreshKnowledge() async {
+        if let chunks = try? await knowledgeService.fetchKnowledge() {
+            knowledgeCache.save(chunks)
+        }
+        await knowledgeRetriever.load()
     }
 
     // MARK: - ViewModels

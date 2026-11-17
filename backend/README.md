@@ -70,6 +70,38 @@ The app loads YouTube's embed URL directly in `WKWebView`, passing its installed
 
 Migration `0010` creates the `guides` table, seeds the six guides the app used to hardcode, and turns `lessons.guide_id` into a foreign key (`ON UPDATE CASCADE`, `ON DELETE SET NULL`). The migration fails if a lesson points to a guide id that doesn't exist; fix that row before upgrading. The app caches the last server copy and keeps its bundled guides as the offline fallback, since guides are needed exactly when the network may be down.
 
+## Knowledge base (first-aid RAG)
+
+Plain RAG. Migration `0011` creates `kb_chunks` with these columns:
+- `id`, a slug;
+- `text`, at most 1,800 characters;
+- `embedding`, 768 numbers;
+- `embedding_model`, the model that produced the vector.
+
+`GET /knowledge` (public) returns every chunk, sorted by id; a database error returns 503. The app saves the list and embeds each question on the phone. It takes the four chunks with the highest cosine similarity and gives them to Apple's on-device model.
+
+When a chunk's text is edited in Supabase, a trigger clears its vector. The app skips chunks without a vector until `load_knowledge` runs again.
+
+### Embedding model
+
+The app ships Google's **EmbeddingGemma** (`google/embeddinggemma-300m`), converted to Core ML by `tools/embedding-model/convert.py`. It lives in `CruzRoja/Resources/`: `EmbeddingGemma.mlpackage` (138 MB, stored with Git LFS) and `EmbeddingGemma-tokenizer.json`.
+
+- The conversion keeps only Latin-script vocabulary and stores 4-bit weights.
+- Questions are embedded with the model's prompts: `task: search result | query: …` for questions and `title: none | text: …` for chunks.
+- The vectors in the database are computed on a Mac by `tools/embed-knowledge`. It uses the app's own `Embedder.swift` and `BPETokenizer.swift`, so they match what the phone computes.
+- On `tools/embedding-model/retrieval_eval.json` (40 everyday questions), EmbeddingGemma finds the right topic first 34 times and in the top 3 39 times. multilingual-e5-small managed 28 and 35, Apple's NLContextualEmbedding 13 and 21.
+
+### Content
+
+`scripts/knowledge_content.py` holds the topics, their sources and the 32 chunks (two per topic: how to recognize it, and what to do). Everything is a draft until Cruz Roja reviews it (RF-16).
+
+```bash
+.venv/bin/python -m scripts.load_knowledge       # insert new chunks, embed the ones without a vector, update the app's knowledge.json
+.venv/bin/python -m scripts.evaluate_retrieval   # how often search finds the right topic
+```
+
+`load_knowledge` uses `DATABASE_URL` from `.env` (the shared Supabase database) and needs a Mac with Xcode. It never overwrites a chunk that already exists. Run it after changing `knowledge_content.py`; `tests/test_knowledge.py` fails while the app's copy is out of date.
+
 ## Lesson completion
 
 All three require a signed-in user:
@@ -112,6 +144,7 @@ tests/
 | PUT | `/users/{user_id}/medical-profile` | Creates or replaces the whole profile | 200, 404, 422 |
 | GET | `/lessons` | Ordered lessons with stable UUID and optional emergency guide ID | 200, 503 |
 | GET | `/guides` | Ordered emergency guides with their steps | 200, 503 |
+| GET | `/knowledge` | First-aid chunks and their vectors for the assistant | 200, 503 |
 | GET | `/lessons/completions` | My completed lessons (token required) | 200, 401 |
 | POST | `/lessons/completions` | Mark `{lesson_ids}` completed, returns my full list | 200, 401, 422 |
 | DELETE | `/lessons/{lesson_id}/completion` | Undo a completion | 204, 401 |
