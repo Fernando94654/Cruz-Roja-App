@@ -52,7 +52,10 @@ backend/
 
 ## Run it
 
+The first-aid assistant's embedding model (`CruzRoja/Resources/EmbeddingGemma.mlpackage`, 138 MB) is stored with [Git LFS](https://git-lfs.com). Install it before cloning, or run `git lfs pull` in an existing clone; without it Xcode gets a small pointer file instead of the model.
+
 ```bash
+git lfs install
 cp .env.example .env && docker compose up -d
 cd backend && python3 -m venv .venv && source .venv/bin/activate
 pip install -e ".[dev]" && alembic upgrade head && python scripts/seed.py

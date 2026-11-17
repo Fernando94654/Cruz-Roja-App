@@ -1,7 +1,7 @@
 import Foundation
 import Observation
 
-// Simulated ambulance: the countdown runs 4x faster for demos
+// Simulated ambulance: counts down in real seconds
 @MainActor
 @Observable
 final class AmbulanceTracker {
@@ -30,7 +30,7 @@ final class AmbulanceTracker {
         secondsLeft = seconds
         task = Task {
             while secondsLeft > 0 {
-                try? await Task.sleep(for: .seconds(0.25))
+                try? await Task.sleep(for: .seconds(1))
                 if Task.isCancelled { return }
                 secondsLeft -= 1
             }
