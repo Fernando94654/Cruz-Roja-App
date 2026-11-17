@@ -33,7 +33,7 @@ digraph app {
   }
 
   backend [label=<<b>Enlace Vital API</b><br/><font point-size="10">FastAPI · REST/JSON</font>>, shape=cylinder, fillcolor="#FFF4E5", color="#E0A84F"];
-  others [label=<<b>Other features, same structure</b><br/><font point-size="10">Alerts · Assistant · Auth · Family · Learn · MedicalProfile</font>>, style="rounded,dashed", fillcolor="#FFFFFF"];
+  others [label=<<b>Other features, same structure</b><br/><font point-size="10">Alerts · Assistant (RAG) · Auth · CPRCoach · Family · Learn · MedicalProfile</font>>, style="rounded,dashed", fillcolor="#FFFFFF"];
 
   main -> root;
   main -> container [label="creates"];

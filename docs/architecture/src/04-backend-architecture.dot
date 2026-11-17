@@ -10,7 +10,7 @@ digraph backend {
 
   subgraph cluster_c {
     label=<<b>Controller</b> - app/routers/>; fontsize=14; style="rounded,filled"; fillcolor="#FFF4E5"; color="#E0A84F";
-    routers [label=<auth · medical_profiles · dependents · emergency_reports<br/>family · alerts · lessons · guides<br/><font point-size="10">HTTP endpoints, validation, authorization, business rules</font>>];
+    routers [label=<auth · medical_profiles · dependents · emergency_reports<br/>family · alerts · lessons · guides · knowledge<br/><font point-size="10">HTTP endpoints, validation, authorization, business rules</font>>];
   }
   subgraph cluster_v {
     label=<<b>View</b> - app/schemas/ + HTML>; fontsize=14; style="rounded,filled"; fillcolor="#EAF3FB"; color="#7AA7D6";
@@ -18,15 +18,16 @@ digraph backend {
   }
   subgraph cluster_m {
     label=<<b>Model</b> - app/models/>; fontsize=14; style="rounded,filled"; fillcolor="#EEF7EE"; color="#6DBF6D";
-    models [label=<SQLAlchemy 2 ORM + GeoAlchemy2<br/><font point-size="10">users · medical · reports · circles · alerts · learning</font>>];
+    models [label=<SQLAlchemy 2 ORM + GeoAlchemy2<br/><font point-size="10">users · medical · reports · circles · alerts · learning · knowledge</font>>];
   }
   subgraph cluster_x {
     label=<<b>Cross-cutting</b>>; fontsize=14; style="rounded,dashed"; color="#AAAAAA";
     auth [label=<<b>auth.py</b><br/><font point-size="10">JWT HS256 · argon2 · get_current_user</font>>];
     deps [label=<<b>deps.py / db.py</b><br/><font point-size="10">engine · session per request</font>>];
     crypto [label=<<b>crypto.py</b><br/><font point-size="10">Fernet encryption of medical lists</font>>];
+    smn [label=<<b>smn_alerts.py</b><br/><font point-size="10">SMN CAP feed → official_alerts</font>>];
   }
-  alembic [label=<<b>alembic/versions</b><br/><font point-size="10">0001 … 0010 schema migrations</font>>];
+  alembic [label=<<b>alembic/versions</b><br/><font point-size="10">0001 … 0011 schema migrations</font>>];
   db [label=<<b>PostgreSQL + PostGIS</b><br/><font point-size="10">Supabase · RLS on all tables</font>>, shape=cylinder, fillcolor="#EEF7EE", color="#6DBF6D"];
 
   client -> main [label="HTTPS"];
@@ -36,6 +37,7 @@ digraph backend {
   routers -> auth [style=dashed, label="Depends()"];
   routers -> deps [style=dashed, label="Depends()"];
   routers -> crypto [style=dashed];
+  routers -> smn [style=dashed, label="background sync"];
   models -> db [label="psycopg3", penwidth=2];
   alembic -> db [style=dotted, label="upgrade head"];
 }
