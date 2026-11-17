@@ -6,6 +6,7 @@ struct SummaryView: View {
     let viewModel: EmergencyReportViewModel
     @State private var showsComposer = false
     @State private var copied = false
+    @State private var showsCalm = false
 
     private var report: EmergencyReport { viewModel.report }
 
@@ -41,6 +42,13 @@ struct SummaryView: View {
                     }
                     NavigationLink(value: EmergencyRoute.cprCoach) {
                         Label("Coach de RCP con la cámara", systemImage: "camera.viewfinder")
+                    }
+                }
+
+                // Quien pide ayuda suele estar en panico; se ofrece Calma mientras llega la ambulancia
+                Section {
+                    Button { showsCalm = true } label: {
+                        Label("¿Nervioso? Respira conmigo mientras llega la ambulancia", systemImage: "wind")
                     }
                 }
             }
@@ -99,6 +107,7 @@ struct SummaryView: View {
             MessageComposer(recipient: viewModel.operatorPhone, body: viewModel.smsBody)
                 .ignoresSafeArea()
         }
+        .fullScreenCover(isPresented: $showsCalm) { CalmView() }
         .alert("No se pudo enviar", isPresented: hasError) {
             Button("Aceptar", role: .cancel) {}
         } message: {
