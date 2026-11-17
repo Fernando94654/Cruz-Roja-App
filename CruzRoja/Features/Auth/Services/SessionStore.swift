@@ -28,6 +28,9 @@ final class SessionStore {
         AuthToken.clear()
         // The server keeps the progress; the next person on this phone shouldn't see it
         LessonProgressStore(defaults: defaults).clear()
+        // El perfil médico y los familiares son de esta cuenta; no deben quedar en el teléfono
+        MedicalProfileCache().clear()
+        DependentProfilesCache().clear()
         isSignedIn = false
         defaults.set(false, forKey: Keys.signedIn)
     }

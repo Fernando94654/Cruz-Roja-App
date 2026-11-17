@@ -1,4 +1,4 @@
-"""Perfiles médicos de los familiares del usuario (máximo 10)."""
+"""Perfiles médicos de los familiares del usuario que inició sesión (máximo 10)."""
 
 import uuid
 
@@ -6,14 +6,14 @@ from fastapi import APIRouter, Depends, HTTPException, Response, status
 from sqlalchemy import func, select
 from sqlalchemy.orm import Session
 
+from app.auth import get_current_user
 from app.crypto import decrypt_list, encrypt_list
 from app.deps import get_db
-from app.models import DependentContact, DependentProfile
+from app.models import DependentContact, DependentProfile, User
 from app.models.medical import BloodType
-from app.routers.medical_profiles import get_user
 from app.schemas.medical_profile import DependentProfileIn, DependentProfileOut, EmergencyContactSchema
 
-router = APIRouter(prefix="/users", tags=["Dependent profiles"])
+router = APIRouter(prefix="/me", tags=["Dependent profiles"])
 
 MAX_DEPENDENTS = 10
 
@@ -68,9 +68,9 @@ def apply(db: Session, dependent: DependentProfile, data: DependentProfileIn) ->
 
 
 # GET: regresa la lista de familiares del usuario
-@router.get("/{user_id}/dependents", response_model=list[DependentProfileOut])
-def list_dependents(user_id: uuid.UUID, db: Session = Depends(get_db)) -> list[DependentProfileOut]:
-    get_user(db, user_id)
+@router.get("/dependents", response_model=list[DependentProfileOut])
+def list_dependents(me: User = Depends(get_current_user), db: Session = Depends(get_db)) -> list[DependentProfileOut]:
+    user_id = me.id
     query = (
         select(DependentProfile)
         .where(DependentProfile.owner_id == user_id)
@@ -79,9 +79,11 @@ def list_dependents(user_id: uuid.UUID, db: Session = Depends(get_db)) -> list[D
     return [to_out(db, d) for d in db.scalars(query)]
 
 
-@router.post("/{user_id}/dependents", response_model=DependentProfileOut, status_code=status.HTTP_201_CREATED)
-def create_dependent(user_id: uuid.UUID, data: DependentProfileIn, db: Session = Depends(get_db)) -> DependentProfileOut:
-    get_user(db, user_id)
+@router.post("/dependents", response_model=DependentProfileOut, status_code=status.HTTP_201_CREATED)
+def create_dependent(
+    data: DependentProfileIn, me: User = Depends(get_current_user), db: Session = Depends(get_db)
+) -> DependentProfileOut:
+    user_id = me.id
     count = db.scalar(select(func.count()).where(DependentProfile.owner_id == user_id))
     if count >= MAX_DEPENDENTS:
         raise HTTPException(status.HTTP_409_CONFLICT, detail=f"Puedes registrar hasta {MAX_DEPENDENTS} familiares")
@@ -95,27 +97,31 @@ def create_dependent(user_id: uuid.UUID, data: DependentProfileIn, db: Session =
     return to_out(db, dependent)
 
 
-@router.get("/{user_id}/dependents/{dependent_id}", response_model=DependentProfileOut)
-def read_dependent(user_id: uuid.UUID, dependent_id: uuid.UUID, db: Session = Depends(get_db)) -> DependentProfileOut:
-    get_user(db, user_id)
-    return to_out(db, get_dependent(db, user_id, dependent_id))
-
-
-@router.put("/{user_id}/dependents/{dependent_id}", response_model=DependentProfileOut)
-def update_dependent(
-    user_id: uuid.UUID, dependent_id: uuid.UUID, data: DependentProfileIn, db: Session = Depends(get_db)
+@router.get("/dependents/{dependent_id}", response_model=DependentProfileOut)
+def read_dependent(
+    dependent_id: uuid.UUID, me: User = Depends(get_current_user), db: Session = Depends(get_db)
 ) -> DependentProfileOut:
-    get_user(db, user_id)
-    dependent = get_dependent(db, user_id, dependent_id)
+    return to_out(db, get_dependent(db, me.id, dependent_id))
+
+
+@router.put("/dependents/{dependent_id}", response_model=DependentProfileOut)
+def update_dependent(
+    dependent_id: uuid.UUID,
+    data: DependentProfileIn,
+    me: User = Depends(get_current_user),
+    db: Session = Depends(get_db),
+) -> DependentProfileOut:
+    dependent = get_dependent(db, me.id, dependent_id)
     apply(db, dependent, data)
     db.commit()
     db.refresh(dependent)
     return to_out(db, dependent)
 
 
-@router.delete("/{user_id}/dependents/{dependent_id}", status_code=status.HTTP_204_NO_CONTENT)
-def delete_dependent(user_id: uuid.UUID, dependent_id: uuid.UUID, db: Session = Depends(get_db)) -> Response:
-    get_user(db, user_id)
-    db.delete(get_dependent(db, user_id, dependent_id))
+@router.delete("/dependents/{dependent_id}", status_code=status.HTTP_204_NO_CONTENT)
+def delete_dependent(
+    dependent_id: uuid.UUID, me: User = Depends(get_current_user), db: Session = Depends(get_db)
+) -> Response:
+    db.delete(get_dependent(db, me.id, dependent_id))
     db.commit()
     return Response(status_code=status.HTTP_204_NO_CONTENT)

@@ -6,10 +6,10 @@ import Testing
 
 // Servicio falso que simula no tener internet
 private struct OfflineDependentsService: DependentProfilesServicing {
-    func fetchDependents(userID: UUID) async throws -> [DependentProfile] { throw APIError.offline }
-    func createDependent(_ dependent: DependentProfile, userID: UUID) async throws -> DependentProfile { throw APIError.offline }
-    func updateDependent(_ dependent: DependentProfile, userID: UUID) async throws -> DependentProfile { throw APIError.offline }
-    func deleteDependent(id: UUID, userID: UUID) async throws { throw APIError.offline }
+    func fetchDependents() async throws -> [DependentProfile] { throw APIError.offline }
+    func createDependent(_ dependent: DependentProfile) async throws -> DependentProfile { throw APIError.offline }
+    func updateDependent(_ dependent: DependentProfile) async throws -> DependentProfile { throw APIError.offline }
+    func deleteDependent(id: UUID) async throws { throw APIError.offline }
 }
 
 private func emptyCache() -> DependentProfilesCache {
@@ -51,5 +51,19 @@ struct CruzRojaTestsPerfilMedico {
 
         #expect(viewModel.isShowingCachedCopy)
         #expect(viewModel.dependents.first?.fullName == "Rosa Martínez")
+    }
+
+    // TC-PM-08
+    @Test("Al cerrar sesión se borra el perfil guardado en el teléfono")
+    func clearRemovesSavedCopy() async {
+        let cache = MedicalProfileCache(directory: FileManager.default.temporaryDirectory.appending(path: UUID().uuidString))
+        let viewModel = MedicalProfileViewModel(service: MockMedicalProfileService(), cache: cache)
+        await viewModel.load()
+        #expect(cache.load() != nil)
+
+        viewModel.clear()
+
+        #expect(viewModel.profile == nil)
+        #expect(cache.load() == nil)
     }
 }
