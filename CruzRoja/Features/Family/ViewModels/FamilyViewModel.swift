@@ -18,12 +18,26 @@ final class FamilyViewModel {
 
     private(set) var myLocation: Coordinate?
 
+    // Summary of the family made with AI, nil until the user asks for it
+    private(set) var summary: FamilySummary?
+    private(set) var isSummarizing = false
+
     private let service: FamilyServicing
     private let locationProvider: LocationProviding
+    private let summarizer: FamilySummarizing
 
-    init(service: FamilyServicing, locationProvider: LocationProviding) {
+    init(service: FamilyServicing, locationProvider: LocationProviding, summarizer: FamilySummarizing? = nil) {
         self.service = service
         self.locationProvider = locationProvider
+        self.summarizer = summarizer ?? FallbackFamilySummarizer()
+    }
+
+    // Only runs when the user taps the button, not on every refresh
+    func summarize() async {
+        guard !isSummarizing else { return }
+        isSummarizing = true
+        defer { isSummarizing = false }
+        summary = await summarizer.summarize(family)
     }
 
     func locate() async {

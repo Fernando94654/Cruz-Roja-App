@@ -110,4 +110,26 @@ struct FamilyTests {
         #expect(report.reason == "Avisó que necesita ayuda")
         #expect(location?.coordinate == ana.coordinate)
     }
+
+    // TC-FA-14, the summary starts with who needs help and says what to do
+    // Uses the rules so the result is the same on any Mac, with or without Apple Intelligence
+    @Test func resumenFamilia() async {
+        let viewModel = FamilyViewModel(service: MockFamilyService(), locationProvider: FixedLocationProvider(),
+                                        summarizer: RuleBasedFamilySummarizer())
+        await viewModel.load()
+        #expect(viewModel.summary == nil)
+        await viewModel.summarize()
+        let text = viewModel.summary?.text ?? ""
+        #expect(text.hasPrefix("Ana necesita ayuda."))
+        #expect(text.contains("Lucía no ha contestado."))
+        #expect(text.contains("Jorge está bien."))
+        #expect(text.hasSuffix("Llama a Ana o repórtalo desde su ficha."))
+        #expect(viewModel.summary?.source == .rules)
+    }
+
+    // TC-FA-15, with no family the summary invites to add someone
+    @Test func resumenSinFamilia() {
+        let text = RuleBasedFamilySummarizer.text(for: Family())
+        #expect(text == "Todavía no tienes familiares. Agrega a alguien para saber cómo está en una emergencia.")
+    }
 }

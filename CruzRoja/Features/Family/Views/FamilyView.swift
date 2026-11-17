@@ -140,6 +140,7 @@ struct FamilyView: View {
 
             if !family.members.isEmpty {
                 FamilyMapSection(viewModel: viewModel, onOpen: open, onReport: report)
+                Section { summaryCard }
             }
 
             if !family.receivedInvitations.isEmpty {
@@ -186,6 +187,45 @@ struct FamilyView: View {
         .disabled(viewModel.isBusy)
         .refreshable { await viewModel.load() }
         .animation(.default, value: family)
+    }
+
+    // Card with the AI summary, it is made when the user taps the button
+    private var summaryCard: some View {
+        VStack(alignment: .leading, spacing: 10) {
+            Label(viewModel.summary?.source == .rules ? "Resumen automático" : "Resumen con IA",
+                  systemImage: viewModel.summary?.source == .rules ? "text.bubble" : "sparkles")
+                .font(.subheadline.bold())
+                .foregroundStyle(Color.brandRed)
+
+            if viewModel.isSummarizing {
+                HStack(spacing: 8) {
+                    ProgressView()
+                    Text("Revisando cómo está tu familia…")
+                        .foregroundStyle(.secondary)
+                }
+            } else if let summary = viewModel.summary {
+                Text(summary.text)
+            } else {
+                Text("Te decimos en pocas palabras cómo está tu familia y qué hacer.")
+                    .foregroundStyle(.secondary)
+            }
+
+            HStack {
+                Button(viewModel.summary == nil ? "Resumir con IA" : "Actualizar resumen", systemImage: "sparkles") {
+                    Task { await viewModel.summarize() }
+                }
+                .buttonStyle(.bordered)
+                .tint(Color.brandRed)
+                .disabled(viewModel.isSummarizing)
+                Spacer()
+                if viewModel.summary?.source == .ai {
+                    Text("Generado en tu iPhone")
+                        .font(.caption)
+                        .foregroundStyle(.secondary)
+                }
+            }
+        }
+        .padding(.vertical, 4)
     }
 
     private func open(_ member: FamilyMember) {
