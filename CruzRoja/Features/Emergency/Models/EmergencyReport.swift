@@ -1,5 +1,6 @@
 import Foundation
 
+/// Who the emergency is for.
 enum ReportingFor: CaseIterable, Hashable, Sendable {
     case myself
     case someoneElse
@@ -19,6 +20,7 @@ enum ReportingFor: CaseIterable, Hashable, Sendable {
     }
 }
 
+/// Emergency report with the fields Cruz Roja asks for.
 struct EmergencyReport: Hashable, Sendable {
     var reportingFor: ReportingFor = .myself
     var patientName: String?
@@ -41,6 +43,7 @@ struct EmergencyReport: Hashable, Sendable {
     static let demoDescription = "Mi abuela se cayó en la casa y se golpeó la cabeza, está confundida y pálida pero respira bien"
 }
 
+/// Exact location sent with the report.
 struct EmergencyLocation: Hashable, Sendable {
     let coordinate: Coordinate
     let address: String

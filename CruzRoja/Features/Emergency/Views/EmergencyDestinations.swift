@@ -8,6 +8,7 @@ extension View {
             case .report: ReportView(viewModel: viewModel)
             case .summary: SummaryView(viewModel: viewModel)
             case .firstAid: FirstAidView(viewModel: container.makeFirstAidViewModel()).ambulanceStatus(container)
+            case .cprCoach: CPRCoachView(viewModel: container.makeCPRCoachViewModel())
             case .guide(let guide):
                 GuideView(viewModel: container.makeGuideViewModel(guide: guide)).ambulanceStatus(container, announcesArrival: true)
             case .lesson(let lesson, let autoplay):

@@ -40,6 +40,11 @@
 			path = CruzRojaTestsAprende;
 			sourceTree = "<group>";
 		};
+		A05B24E0308E7EC8005AE137 /* CruzRojaTestsAlertas */ = {
+			isa = PBXFileSystemSynchronizedRootGroup;
+			path = CruzRojaTestsAlertas;
+			sourceTree = "<group>";
+		};
 		A10000000000000000000002 /* CruzRoja */ = {
 			isa = PBXFileSystemSynchronizedRootGroup;
 			path = CruzRoja;
@@ -78,6 +83,7 @@
 				A10000000000000000000002 /* CruzRoja */,
 				A05B24D3308E7EC8005AE137 /* CruzRojaTestsAprende */,
 				25428B96308ED9A6004D6B52 /* CruzRojaTestsPerfilMedico */,
+				A05B24E0308E7EC8005AE137 /* CruzRojaTestsAlertas */,
 				A10000000000000000000005 /* Products */,
 			);
 			sourceTree = "<group>";
@@ -133,6 +139,7 @@
 			);
 			fileSystemSynchronizedGroups = (
 				A05B24D3308E7EC8005AE137 /* CruzRojaTestsAprende */,
+				A05B24E0308E7EC8005AE137 /* CruzRojaTestsAlertas */,
 			);
 			name = CruzRojaTestsAprende;
 			packageProductDependencies = (
@@ -572,6 +579,7 @@
 				DEVELOPMENT_TEAM = WY36GU57Q5;
 				ENABLE_PREVIEWS = YES;
 				GENERATE_INFOPLIST_FILE = YES;
+				INFOPLIST_KEY_NSCameraUsageDescription = "La cámara guía tus compresiones de RCP; el video se procesa en el teléfono y no se guarda.";
 				INFOPLIST_KEY_NSLocationWhenInUseUsageDescription = "Enlace Vital envía tu ubicación exacta a Cruz Roja cuando reportas una emergencia.";
 				INFOPLIST_KEY_NSMicrophoneUsageDescription = "El micrófono se usa para dictar lo que está pasando en una emergencia.";
 				INFOPLIST_KEY_NSSpeechRecognitionUsageDescription = "El reconocimiento de voz convierte tu dictado en texto para llenar el reporte.";
@@ -594,6 +602,7 @@
 				DEVELOPMENT_TEAM = WY36GU57Q5;
 				ENABLE_PREVIEWS = YES;
 				GENERATE_INFOPLIST_FILE = YES;
+				INFOPLIST_KEY_NSCameraUsageDescription = "La cámara guía tus compresiones de RCP; el video se procesa en el teléfono y no se guarda.";
 				INFOPLIST_KEY_NSLocationWhenInUseUsageDescription = "Enlace Vital envía tu ubicación exacta a Cruz Roja cuando reportas una emergencia.";
 				INFOPLIST_KEY_NSMicrophoneUsageDescription = "El micrófono se usa para dictar lo que está pasando en una emergencia.";
 				INFOPLIST_KEY_NSSpeechRecognitionUsageDescription = "El reconocimiento de voz convierte tu dictado en texto para llenar el reporte.";

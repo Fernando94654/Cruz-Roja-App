@@ -1,0 +1,41 @@
+// Render with: dot -Tpng -Gdpi=200 04-backend-architecture.dot -o ../png/04-backend-architecture.png
+digraph backend {
+  graph [rankdir=TB, fontname="Helvetica", nodesep=0.35, ranksep=0.6, pad=0.4,
+         label=<<b>Enlace Vital - Web API architecture (FastAPI, layered MVC)</b>>, labelloc=t, fontsize=22];
+  node [shape=box, style="rounded,filled", fillcolor=white, color="#888888", fontname="Helvetica", fontsize=12, margin="0.18,0.10"];
+  edge [fontname="Helvetica", fontsize=10, color="#555555"];
+
+  client [label="iOS app / operator browser", shape=ellipse, fillcolor="#FDECEE", color="#C8102E"];
+  main [label=<<b>app/main.py</b><br/><font point-size="10">FastAPI app · registers routers · /health</font>>, fillcolor="#FFF7F8", color="#C8102E"];
+
+  subgraph cluster_c {
+    label=<<b>Controller</b> - app/routers/>; fontsize=14; style="rounded,filled"; fillcolor="#FFF4E5"; color="#E0A84F";
+    routers [label=<auth · medical_profiles · dependents · emergency_reports<br/>family · alerts · lessons · guides<br/><font point-size="10">HTTP endpoints, validation, authorization, business rules</font>>];
+  }
+  subgraph cluster_v {
+    label=<<b>View</b> - app/schemas/ + HTML>; fontsize=14; style="rounded,filled"; fillcolor="#EAF3FB"; color="#7AA7D6";
+    schemas [label=<Pydantic request/response models (DTOs)<br/><font point-size="10">JSON contract with the app · operator page /r/{token} (HTML)</font>>];
+  }
+  subgraph cluster_m {
+    label=<<b>Model</b> - app/models/>; fontsize=14; style="rounded,filled"; fillcolor="#EEF7EE"; color="#6DBF6D";
+    models [label=<SQLAlchemy 2 ORM + GeoAlchemy2<br/><font point-size="10">users · medical · reports · circles · alerts · learning</font>>];
+  }
+  subgraph cluster_x {
+    label=<<b>Cross-cutting</b>>; fontsize=14; style="rounded,dashed"; color="#AAAAAA";
+    auth [label=<<b>auth.py</b><br/><font point-size="10">JWT HS256 · argon2 · get_current_user</font>>];
+    deps [label=<<b>deps.py / db.py</b><br/><font point-size="10">engine · session per request</font>>];
+    crypto [label=<<b>crypto.py</b><br/><font point-size="10">Fernet encryption of medical lists</font>>];
+  }
+  alembic [label=<<b>alembic/versions</b><br/><font point-size="10">0001 … 0010 schema migrations</font>>];
+  db [label=<<b>PostgreSQL + PostGIS</b><br/><font point-size="10">Supabase · RLS on all tables</font>>, shape=cylinder, fillcolor="#EEF7EE", color="#6DBF6D"];
+
+  client -> main [label="HTTPS"];
+  main -> routers;
+  routers -> schemas [label="validates input /\nserializes output"];
+  routers -> models [label="queries / commits"];
+  routers -> auth [style=dashed, label="Depends()"];
+  routers -> deps [style=dashed, label="Depends()"];
+  routers -> crypto [style=dashed];
+  models -> db [label="psycopg3", penwidth=2];
+  alembic -> db [style=dotted, label="upgrade head"];
+}

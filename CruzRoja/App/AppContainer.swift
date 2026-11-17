@@ -21,7 +21,11 @@ final class AppContainer {
     private let lessonsService: LessonsServicing
     private let guidesService: GuidesServicing
     private let guideCache: GuideCache
+    private let knowledgeService: KnowledgeServicing
+    private let knowledgeCache: KnowledgeCache
+    private let knowledgeRetriever: KnowledgeRetriever
 
+    // Receives every service; defaults to mocks so previews and tests need no server
     init(
         session: SessionStore,
         speech: SpeechSynthesizing,
@@ -40,7 +44,9 @@ final class AppContainer {
         lessonProgressService: LessonProgressServicing = MockLessonProgressService(),
         lessonProgressStore: LessonProgressStore = LessonProgressStore(),
         guidesService: GuidesServicing = MockGuidesService(),
-        guideCache: GuideCache = GuideCache()
+        guideCache: GuideCache = GuideCache(),
+        knowledgeService: KnowledgeServicing = MockKnowledgeService(),
+        knowledgeCache: KnowledgeCache = KnowledgeCache()
     ) {
         self.session = session
         self.speech = speech
@@ -52,16 +58,36 @@ final class AppContainer {
         self.medicalProfileCache = medicalProfileCache
         self.emergencyReportService = emergencyReportService
         self.reportExtractor = reportExtractor ?? RuleBasedReportExtractor()
-        self.firstAidAssistant = firstAidAssistant ?? KeywordFirstAidAssistant(guides: { guideCache.load() })
+        let knowledgeRetriever = KnowledgeRetriever(cache: knowledgeCache)
+        self.firstAidAssistant = firstAidAssistant ?? RAGFirstAidAssistant(
+            retriever: knowledgeRetriever,
+            fallback: KeywordFirstAidAssistant(delay: .zero, guides: { guideCache.load() })
+        )
         self.alertsService = alertsService
         self.familyService = familyService
         self.lessonsService = lessonsService
         self.lessonProgress = LessonProgress(service: lessonProgressService, store: lessonProgressStore)
         self.guidesService = guidesService
         self.guideCache = guideCache
+        self.knowledgeService = knowledgeService
+        self.knowledgeCache = knowledgeCache
+        self.knowledgeRetriever = knowledgeRetriever
     }
 
-    static let live = AppContainer(
+    static let live = DemoMode.offline ? offline : online
+
+    // Same phone features (voice, GPS, dictation) but the data is sample data, works without internet
+    private static let offline = AppContainer(
+        session: SessionStore(),
+        speech: SpeechService(),
+        ambulance: AmbulanceTracker(),
+        locationProvider: CoreLocationService(),
+        dictation: { SpeechDictation() },
+        medicalProfileService: MockMedicalProfileService(),
+        reportExtractor: FallbackReportExtractor()
+    )
+
+    private static let online = AppContainer(
         session: SessionStore(),
         speech: SpeechService(),
         ambulance: AmbulanceTracker(),
@@ -75,7 +101,8 @@ final class AppContainer {
         familyService: DemoMode.isActive("family") ? MockFamilyService() : FamilyAPIService(),
         lessonsService: LessonsAPIService(),
         lessonProgressService: DemoMode.isActive("learn", "lesson") ? MockLessonProgressService() : LessonProgressAPIService(),
-        guidesService: GuidesAPIService()
+        guidesService: GuidesAPIService(),
+        knowledgeService: KnowledgeAPIService()
     )
 
     static let preview = AppContainer(
@@ -94,7 +121,9 @@ final class AppContainer {
         lessonProgressService: LessonProgressAPIService(),
         lessonProgressStore: LessonProgressStore(defaults: UserDefaults(suiteName: "preview") ?? .standard),
         guidesService: GuidesAPIService(),
-        guideCache: GuideCache(directory: FileManager.default.temporaryDirectory)
+        guideCache: GuideCache(directory: FileManager.default.temporaryDirectory),
+        knowledgeService: KnowledgeAPIService(),
+        knowledgeCache: KnowledgeCache(directory: FileManager.default.temporaryDirectory)
     )
 
     var guides: [FirstAidGuide] { guideCache.load() }
@@ -105,16 +134,27 @@ final class AppContainer {
         guideCache.save(guides)
     }
 
+    // Downloads the latest texts and loads the model so the first question is fast
+    func refreshKnowledge() async {
+        if let chunks = try? await knowledgeService.fetchKnowledge() {
+            knowledgeCache.save(chunks)
+        }
+        await knowledgeRetriever.load()
+    }
+
     // MARK: - ViewModels
 
+    // Sign-in screen
     func makeAuthViewModel() -> AuthViewModel {
         AuthViewModel(service: authService, session: session)
     }
 
+    // Medical profile screen, with its offline copy
     func makeMedicalProfileViewModel() -> MedicalProfileViewModel {
         MedicalProfileViewModel(service: medicalProfileService, cache: medicalProfileCache)
     }
 
+    // Emergency report; sending it dispatches the ambulance
     func makeEmergencyReportViewModel(report: EmergencyReport = EmergencyReport(),
                                       location: EmergencyLocation? = nil, shareURL: String? = nil) -> EmergencyReportViewModel {
         let cache = medicalProfileCache
@@ -139,6 +179,7 @@ final class AppContainer {
         return report.merging(RuleBasedReportExtractor().fields(from: EmergencyReport.demoDescription))
     }
 
+    // Assistant chat with the cached guides and the real microphone
     func makeFirstAidViewModel() -> FirstAidViewModel {
         var messages: [ChatMessage] = []
         if DemoMode.isActive("firstaid") {
@@ -149,22 +190,37 @@ final class AppContainer {
                                  guides: guideCache.load(), messages: messages)
     }
 
+    // Camera CPR coach; the simulator has no camera, so it gets a synthetic rescuer
+    func makeCPRCoachViewModel() -> CPRCoachViewModel {
+        #if targetEnvironment(simulator)
+        let provider: BodyPoseProviding = MockBodyPoseProvider()
+        #else
+        let provider: BodyPoseProviding = DemoMode.isActive("cpr") ? MockBodyPoseProvider() : CameraPoseService()
+        #endif
+        return CPRCoachViewModel(provider: provider, speech: speech)
+    }
+
+    // Step-by-step voice guide
     func makeGuideViewModel(guide: FirstAidGuide) -> GuideViewModel {
         GuideViewModel(guide: guide, speech: speech, lessonsService: lessonsService)
     }
 
+    // Community alerts screen
     func makeAlertsViewModel() -> AlertsViewModel {
         AlertsViewModel(service: alertsService)
     }
 
+    // Family circle screen
     func makeFamilyViewModel() -> FamilyViewModel {
         FamilyViewModel(service: familyService, locationProvider: locationProvider)
     }
 
+    // Aprende lesson list with the user's progress
     func makeLearnViewModel() -> LearnViewModel {
         LearnViewModel(service: lessonsService, progress: lessonProgress, guides: guideCache.load())
     }
 
+    // One lesson, sharing the same progress as the list
     func makeLessonViewModel(lesson: Lesson) -> LessonViewModel {
         LessonViewModel(lesson: lesson, speech: speech, progress: lessonProgress)
     }

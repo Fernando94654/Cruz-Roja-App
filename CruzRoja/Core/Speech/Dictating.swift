@@ -1,15 +1,18 @@
 import Foundation
 import Observation
 
+/// Speech-to-text used to describe the emergency.
 @MainActor
 protocol Dictating: AnyObject {
     var isListening: Bool { get }
     // Streams partial transcriptions until stop() is called
     func start(onText: @escaping @MainActor (String) -> Void,
                onError: @escaping @MainActor (String) -> Void) async throws
+    /// Stops listening.
     func stop()
 }
 
+/// Dictation failures with user-facing messages.
 enum DictationError: LocalizedError {
     case notAuthorized
     case speechPermissionTimedOut

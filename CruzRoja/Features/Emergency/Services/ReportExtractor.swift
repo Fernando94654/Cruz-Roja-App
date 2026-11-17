@@ -29,6 +29,7 @@ struct ExtractedFields: Equatable, Sendable {
     }
 }
 
+/// Merging extracted fields into a report.
 extension EmergencyReport {
     // Only overwrites the fields that were detected
     func merging(_ fields: ExtractedFields) -> EmergencyReport {
@@ -68,6 +69,7 @@ extension RuleBasedReportExtractor: ReportExtracting {
 
 // Keyword rules in Spanish, matched without accents; offline fallback when the AI isn't available
 struct RuleBasedReportExtractor: Sendable {
+    /// Detects report fields in the text with keyword rules.
     func fields(from text: String) -> ExtractedFields {
         let t = Self.normalize(text)
         let relative = Self.relatives.first { t.contains("mi \($0)") }
@@ -84,6 +86,7 @@ struct RuleBasedReportExtractor: Sendable {
         )
     }
 
+    /// Lowercases and strips accents so keywords match.
     static func normalize(_ text: String) -> String {
         text.folding(options: [.diacriticInsensitive, .caseInsensitive], locale: Locale(identifier: "es_MX")).lowercased()
     }

@@ -1,6 +1,7 @@
 import MessageUI
 import SwiftUI
 
+/// Report review, sending and SMS to the operator.
 struct SummaryView: View {
     let viewModel: EmergencyReportViewModel
     @State private var showsComposer = false
@@ -37,6 +38,9 @@ struct SummaryView: View {
                 Section {
                     NavigationLink(value: EmergencyRoute.firstAid) {
                         Label("Ver instrucciones de primeros auxilios", systemImage: "bandage")
+                    }
+                    NavigationLink(value: EmergencyRoute.cprCoach) {
+                        Label("Coach de RCP con la cámara", systemImage: "camera.viewfinder")
                     }
                 }
             }

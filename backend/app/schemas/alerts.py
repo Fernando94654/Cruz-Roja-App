@@ -6,7 +6,7 @@ from pydantic import BaseModel, Field, PlainSerializer, field_validator
 
 
 def iso_utc(value: datetime) -> str:
-    # Same format as the medical profile, iOS parses it as is
+    # Se utiliza el mismo formato de fecha para mantener la compatibilidad con iOS
     if value.tzinfo is None:
         value = value.replace(tzinfo=timezone.utc)
     return value.astimezone(timezone.utc).isoformat(timespec="seconds").replace("+00:00", "Z")
@@ -27,12 +27,14 @@ class OfficialAlertOut(BaseModel):
     starts_at: UtcDatetime
 
 
+# Datos que envia la app al publicar un reporte, con validacion del titulo y las coordenadas
 class CommunityReportIn(BaseModel):
     type: ReportType
     title: str = Field(min_length=1, max_length=160)
     latitude: float = Field(ge=-90, le=90)
     longitude: float = Field(ge=-180, le=180)
 
+    # Valida que el titulo no quede vacio despues de eliminar los espacios
     @field_validator("title")
     @classmethod
     def title_required(cls, value: str) -> str:
@@ -43,7 +45,7 @@ class CommunityReportIn(BaseModel):
 
 
 class CommunityReportOut(BaseModel):
-    """Who published the report is never sent; is_mine only tells the user about their own reports."""
+    """No se expone quien publico el reporte; is_mine solo indica si pertenece al usuario actual."""
 
     id: uuid.UUID
     type: ReportType

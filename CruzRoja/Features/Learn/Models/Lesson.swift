@@ -11,11 +11,13 @@ struct Lesson: Identifiable, Hashable, Sendable, Decodable {
     let position: Int
     let steps: [String]
 
+    // Duration as m:ss, or nil when unknown
     var duration: String? {
         guard let seconds = durationSeconds, seconds > 0 else { return nil }
         return String(format: "%d:%02d", seconds / 60, seconds % 60)
     }
 
+    // The video only when the link is a valid YouTube URL
     var video: YouTubeVideo? { videoURL.flatMap(YouTubeVideo.init) }
 
     enum CodingKeys: String, CodingKey {
