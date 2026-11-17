@@ -1,11 +1,10 @@
 import SwiftUI
 
-// Value pushed on the profile tab's NavigationStack to open a family member's profile
 struct DependentRoute: Hashable {
     let id: UUID
 }
 
-// "Familiares" section in the profile tab: list of family members plus "Agregar familiar"
+// Sección de familiares en la pestaña Perfil
 struct DependentsSection: View {
     let viewModel: DependentProfilesViewModel
     let onAdd: () -> Void
@@ -86,7 +85,7 @@ struct DependentRow: View {
     }
 }
 
-// Full profile of one family member, with its own QR code
+// Perfil de un familiar
 struct DependentProfileView: View {
     let dependentID: UUID
     let viewModel: DependentProfilesViewModel
@@ -153,7 +152,7 @@ struct DependentProfileView: View {
     }
 }
 
-// Create or edit a family member's profile; nothing is stored until "Guardar"
+// Formulario para agregar o editar un familiar
 struct EditDependentView: View {
     @Environment(\.dismiss) private var dismiss
     @State private var draft: DependentProfile

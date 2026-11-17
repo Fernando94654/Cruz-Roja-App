@@ -1,5 +1,6 @@
 import Foundation
 
+// Trae, agrega, edita y borra familiares
 protocol DependentProfilesServicing: Sendable {
     func fetchDependents(userID: UUID) async throws -> [DependentProfile]
     func createDependent(_ dependent: DependentProfile, userID: UUID) async throws -> DependentProfile
@@ -7,12 +8,11 @@ protocol DependentProfilesServicing: Sendable {
     func deleteDependent(id: UUID, userID: UUID) async throws
 }
 
-// /users/{id}/dependents (GET, POST) and /users/{id}/dependents/{dependent_id} (PUT, DELETE)
+// Versión real: se conecta al API
 struct DependentProfilesAPIService: DependentProfilesServicing {
     var client = APIClient()
 
     func fetchDependents(userID: UUID) async throws -> [DependentProfile] {
-        // A 404 here means the user doesn't exist; show an empty list
         try await client.get(path(userID), as: [DependentProfile].self) ?? []
     }
 
@@ -35,6 +35,7 @@ struct DependentProfilesAPIService: DependentProfilesServicing {
     }
 }
 
+// Versión de prueba: funciona sin el API
 actor MockDependentProfilesService: DependentProfilesServicing {
     private var dependents: [DependentProfile]
 
@@ -69,7 +70,7 @@ actor MockDependentProfilesService: DependentProfilesServicing {
     }
 }
 
-// Last list received from the API, so dependents' profiles and QR codes work offline
+// Guarda la lista en el teléfono para usarla sin internet
 struct DependentProfilesCache: Sendable {
     let file: URL
 
@@ -84,7 +85,6 @@ struct DependentProfilesCache: Sendable {
         return try? JSONDecoder().decode([DependentProfile].self, from: data)
     }
 
-    // Same protection as MedicalProfileCache: only readable while the phone is unlocked
     func save(_ dependents: [DependentProfile]) {
         do {
             try FileManager.default.createDirectory(at: file.deletingLastPathComponent(), withIntermediateDirectories: true)

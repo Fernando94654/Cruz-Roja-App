@@ -1,6 +1,6 @@
 import SwiftUI
 
-// Full-screen QR so the paramedic can scan it easily
+// Código QR en pantalla completa para el paramédico
 struct QRCodeView: View {
     let name: String
     let text: String

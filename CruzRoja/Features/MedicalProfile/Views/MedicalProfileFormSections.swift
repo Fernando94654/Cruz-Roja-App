@@ -1,7 +1,6 @@
 import SwiftUI
 
-// Form fields shared by the user's own profile and the profiles of family members.
-// Pass `relationship` to show the "Parentesco" field (dependents only).
+// Campos del formulario del perfil
 struct MedicalProfileFormSections: View {
     @Binding var draft: MedicalProfile
     @Binding var hasDateOfBirth: Bool
@@ -69,7 +68,6 @@ struct MedicalProfileFormSections: View {
         }
     }
 
-    // Binds the toggle to the optional date of birth
     private var dateOfBirth: Binding<Date> {
         Binding(
             get: { draft.dateOfBirth ?? Self.suggestedDate },
@@ -81,7 +79,6 @@ struct MedicalProfileFormSections: View {
         Calendar.current.date(byAdding: .year, value: -30, to: Date()) ?? Date()
     }
 
-    // Applies the date toggle before saving: off clears the date, on without picking uses the suggestion
     static func applyingDateChoice(to profile: MedicalProfile, hasDateOfBirth: Bool) -> MedicalProfile {
         var copy = profile
         if !hasDateOfBirth {
@@ -93,7 +90,7 @@ struct MedicalProfileFormSections: View {
     }
 }
 
-// List of texts that can be added and removed (allergies, conditions, medications)
+// Lista donde se agregan y quitan datos, como alergias
 struct EditableListSection: View {
     let title: String
     let placeholder: String

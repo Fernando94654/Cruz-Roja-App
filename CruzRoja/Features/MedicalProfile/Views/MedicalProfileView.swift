@@ -1,10 +1,10 @@
 import SwiftUI
 
+// Pestaña Perfil: mi perfil, mis familiares y el QR
 struct MedicalProfileView: View {
     let container: AppContainer
     @State private var viewModel: MedicalProfileViewModel
     @State private var dependents: DependentProfilesViewModel
-    // Contact phones stay out of the QR unless the user opts in
     @AppStorage("qrIncludesContacts") private var qrIncludesContacts = false
     @State private var showsLogin = DemoMode.isActive("login")
     @State private var isEditing = false
@@ -63,14 +63,11 @@ struct MedicalProfileView: View {
         }
     }
 
-    // Own profile and family members load in parallel
     private func loadAll() async {
         async let profile: Void = viewModel.load()
         async let family: Void = dependents.load()
         _ = await (profile, family)
     }
-
-    // MARK: - Content by state
 
     @ViewBuilder
     private var content: some View {
@@ -145,8 +142,6 @@ struct MedicalProfileView: View {
             showsQR = true
         }
     }
-
-    // MARK: - Account
 
     @ViewBuilder
     private var account: some View {

@@ -1,10 +1,7 @@
 import Foundation
 
-// Medical profile of someone the user looks after who doesn't use the app (a parent, a child).
-// Same shape as GET /users/{id}/dependents/{dependent_id}: the medical fields of MedicalProfile
-// plus the dependent's id and how the user is related to them.
+// Perfil médico de un familiar
 struct DependentProfile: Identifiable, Equatable, Sendable {
-    // Server id once saved; a temporary local id for a new, unsaved dependent
     var id = UUID()
     var relationship: String = ""
     var profile = MedicalProfile()
@@ -13,13 +10,10 @@ struct DependentProfile: Identifiable, Equatable, Sendable {
 
     var fullName: String { profile.fullName }
 
-    // Name with relationship for lists and pickers: "Rosa Martínez (Abuela)"
     var displayName: String {
         relationship.isEmpty ? profile.fullName : "\(profile.fullName) (\(relationship))"
     }
 }
-
-// MARK: - Validation
 
 extension DependentProfile {
     var validationErrors: [String] {
@@ -40,9 +34,6 @@ extension DependentProfile {
     }
 }
 
-// MARK: - JSON
-
-// The API sends a flat object: the profile fields plus "id" and "relationship"
 extension DependentProfile: Codable {
     private enum CodingKeys: String, CodingKey {
         case id, relationship
