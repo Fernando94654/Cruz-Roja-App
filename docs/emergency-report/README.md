@@ -40,6 +40,7 @@ A person reports an emergency, for themselves or someone else, by typing or dict
 - **Fallback.** Keyword rules make sure the report still works without Apple Intelligence.
 - **Protocols.** Each service has an API version and a Mock, so the screens work in previews and tests without a backend.
 - **Operator link.** The link uses a random token, and the operator needs no app or login.
+- **Accessibility.** The SOS button needs a 3-second hold, which VoiceOver and Switch Control users can't do, so it also has an accessibility action that opens the same confirmation. `EmergencyView(requiresHold: false)` starts with a single tap; *Modo sencillo* (`Features/SimpleMode`) uses it. The confirmation and the 5-second countdown always stay.
 
 ## Try it
 

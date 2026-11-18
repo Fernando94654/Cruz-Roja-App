@@ -24,6 +24,8 @@ During an emergency, people are nervous. They don't know the exact address, they
 | Family circle | Shared location and an "¿Estás bien?" check after an alert. | Daniel González |
 | Community alerts | Official alerts for your area and neighbor reports that others confirm. | Juan Gastelum |
 
+**Accessibility:** *Modo sencillo* (Perfil → Accesibilidad) replaces the tabs with one screen of large, high-contrast buttons for older adults: report an emergency with a single tap, call 911, call an emergency contact, or show the medical QR. The SOS button also works with VoiceOver and Switch Control.
+
 ## How it fits together
 
 ![System architecture](docs/architecture/png/02-system-architecture.png)
