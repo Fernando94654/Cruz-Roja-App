@@ -3,8 +3,8 @@ import Foundation
 import FoundationModels
 #endif
 
-// Finds the closest texts and Apple's model answers with them.
-// Without the model it shows the closest text, and if search fails it uses the keywords.
+// Finds the closest topics, Apple's model picks the best one and answers with its texts.
+// Without the model it shows the closest topic, and if search fails it uses the keywords.
 struct RAGFirstAidAssistant: FirstAidAssisting {
     let retriever: KnowledgeRetriever
     let fallback: KeywordFirstAidAssistant
@@ -31,19 +31,23 @@ struct RAGFirstAidAssistant: FirstAidAssisting {
     ]
 
     func answer(_ question: String) async -> AssistantAnswer {
-        guard let chunks = try? await retriever.search(question), let closest = chunks.first else {
+        guard let topics = try? await retriever.search(question), var best = topics.first else {
             return fallback.search(question)
         }
-        let guide = guide(for: closest)
-        if useAppleModel, let text = await askAppleModel(question, chunks) {
+        if useAppleModel, let index = await TopicPicker.pick(question, titles: topics.map(\.title)) {
+            best = topics[index]
+        }
+        let guide = guide(for: best.id)
+        // The chosen topic first, then the next best one in case the pick was wrong
+        let backup = topics.first { $0.id != best.id }?.chunks ?? []
+        if useAppleModel, let text = await askAppleModel(question, best.chunks + backup) {
             return AssistantAnswer(text: text, guide: guide)
         }
-        return AssistantAnswer(text: closest.text, guide: guide)
+        // Without the model show the whole topic so the steps are always there
+        return AssistantAnswer(text: best.chunks.map(\.text).joined(separator: "\n\n"), guide: guide)
     }
 
-    // Removes the last part of the id to get the topic
-    private func guide(for chunk: KnowledgeChunk) -> FirstAidGuide? {
-        let topic = chunk.id.split(separator: "-").dropLast().joined(separator: "-")
+    private func guide(for topic: String) -> FirstAidGuide? {
         guard let id = Self.guideForTopic[topic] else { return nil }
         return fallback.guides().first { $0.id == id && !$0.steps.isEmpty }
     }
