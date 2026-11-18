@@ -134,3 +134,39 @@ def test_report_hidden_after_three_flags(client, db, people):
         assert client.post(f"/alerts/reports/{rid}/flag", headers=auth(make_user(db, name))).status_code == 200
     assert titles(client.get("/alerts/reports/near/%s/%s" % MTY, headers=auth(ana))) == set()
     assert client.post(f"/alerts/reports/{rid}/flag", headers=auth(make_user(db, "Fer"))).status_code == 404
+
+
+def test_official_alerts_only_current_and_newest_first(client, db):
+    """Una alerta que todavia no empieza no aparece, y las vigentes llegan de la mas reciente a la mas antigua."""
+    def alert(title, starts):
+        return OfficialAlert(source="SMN", type="smn", title=title, severity=Severity.info,
+                             area=box(-100.5, 25.5, -100.1, 25.9), area_name="Prueba",
+                             starts_at=starts, expires_at=NOW + timedelta(days=1))
+
+    db.add_all([
+        alert("Vieja", NOW - timedelta(hours=3)),
+        alert("Reciente", NOW - timedelta(minutes=5)),
+        alert("Futura", NOW + timedelta(hours=2)),
+    ])
+    db.flush()
+    response = client.get("/alerts/official")
+    assert response.status_code == 200
+    assert [a["title"] for a in response.json()] == ["Reciente", "Vieja"]
+
+
+def test_reports_never_expose_the_author(client, people):
+    ana, beto = people
+    publish(client, ana, "Calle inundada")
+    report = client.get("/alerts/reports", headers=auth(beto)).json()[0]
+    assert report["is_mine"] is False
+    assert set(report) == {"id", "type", "title", "confirmations", "confirmed_by_me", "flags",
+                           "flagged_by_me", "is_mine", "expires_at"}
+    assert ana.name not in str(report) and ana.email not in str(report)
+
+
+def test_cannot_confirm_own_report_message(client, people):
+    ana, _ = people
+    rid = publish(client, ana, "Humo en el parque")["id"]
+    response = client.post(f"/alerts/reports/{rid}/confirm", headers=auth(ana))
+    assert response.status_code == 409
+    assert response.json()["detail"] == "No puedes confirmar tu propio reporte"

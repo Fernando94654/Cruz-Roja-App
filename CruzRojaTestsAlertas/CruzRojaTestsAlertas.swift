@@ -1,4 +1,5 @@
 import Foundation
+import SwiftUI
 import Testing
 @testable import CruzRoja
 
@@ -225,6 +226,23 @@ struct CruzRojaTestsAlertasZona {
         provider.location = monterrey
         #expect(await recent.coordinate(from: provider) == monterrey.coordinate)
         #expect(provider.requests == 2)
+    }
+
+    @Test("Sin permiso de ubicacion no se publica el reporte y se pide activar la ubicacion")
+    func publishWithoutLocationShowsMessage() async {
+        let service = AlertsAPIService(locationProvider: CountingLocationProvider(location: nil))
+        let viewModel = AlertsViewModel(service: service)
+        #expect(await viewModel.publish(category: .fire, title: "Humo en el parque") == false)
+        #expect(viewModel.publishError == "Activa tu ubicación para publicar un reporte.")
+        #expect(viewModel.reports.isEmpty)
+    }
+
+    @Test("Cada severidad tiene su nombre y su color")
+    func severityColors() {
+        #expect(AlertSeverity.info.label == "Informativa" && AlertSeverity.info.color == .blue)
+        #expect(AlertSeverity.moderate.label == "Precaución" && AlertSeverity.moderate.color == .yellow)
+        #expect(AlertSeverity.high.label == "Alerta" && AlertSeverity.high.color == .orange)
+        #expect(AlertSeverity.extreme.label == "Peligro" && AlertSeverity.extreme.color == .red)
     }
 }
 
