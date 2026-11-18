@@ -50,7 +50,7 @@ def embed_missing(db: Session, embed=embed) -> int:
 
 
 def write_bundle(db: Session) -> int:
-    chunks = [{"id": c.id, "text": c.text, "embedding_model": c.embedding_model,
+    chunks = [{"id": c.id, "topic": c.topic, "text": c.text, "embedding_model": c.embedding_model,
                "embedding": [round(value, 6) for value in c.embedding]}
               for c in db.scalars(select(KbChunk).where(KbChunk.embedding.is_not(None)).order_by(KbChunk.id))]
     BUNDLED.write_text(json.dumps(chunks, ensure_ascii=False) + "\n", encoding="utf-8")

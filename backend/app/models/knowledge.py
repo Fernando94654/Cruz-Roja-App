@@ -15,6 +15,8 @@ class KbChunk(Base):
     __tablename__ = "kb_chunks"
 
     id: Mapped[str] = mapped_column(String(120), primary_key=True)
+    # The emergency this text belongs to, the app groups texts by it
+    topic: Mapped[str] = mapped_column(String(120), index=True)
     text: Mapped[str] = mapped_column(Text)
     # Empty until load_knowledge runs, and again when the text changes
     embedding: Mapped[list[float] | None] = mapped_column(ARRAY(REAL))

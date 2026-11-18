@@ -41,10 +41,10 @@ struct KnowledgeTests {
 
     @Test func rankGroupsChunksByTopic() {
         let chunks = [
-            KnowledgeChunk(id: "a-uno", text: "A\nuno", embedding: [1, 0], embeddingModel: "test"),
-            KnowledgeChunk(id: "b-uno", text: "B\nuno", embedding: [0.9, 0.1], embeddingModel: "test"),
-            KnowledgeChunk(id: "a-dos", text: "A\ndos", embedding: [0, 1], embeddingModel: "test"),
-            KnowledgeChunk(id: "c-uno", text: "C\nuno", embedding: [0.5, 0.5], embeddingModel: "test"),
+            KnowledgeChunk(id: "a-uno", topic: "a", text: "A\nuno", embedding: [1, 0], embeddingModel: "test"),
+            KnowledgeChunk(id: "b-uno", topic: "b", text: "B\nuno", embedding: [0.9, 0.1], embeddingModel: "test"),
+            KnowledgeChunk(id: "a-dos", topic: "a", text: "A\ndos", embedding: [0, 1], embeddingModel: "test"),
+            KnowledgeChunk(id: "c-uno", topic: "c", text: "C\nuno", embedding: [0.5, 0.5], embeddingModel: "test"),
         ]
         let topics = KnowledgeRetriever.rank(chunks, query: [1, 0], k: 2)
         #expect(topics.map(\.id) == ["a", "b"])
@@ -71,7 +71,7 @@ struct KnowledgeTests {
 
     @Test func guideMapPointsAtRealTopicsAndGuides() {
         let topics = Set(KnowledgeCache(directory: temporaryFolder()).load()
-            .map { KnowledgeRetriever.topic(of: $0.id) })
+            .map(\.topic))
         let guides = Set(FirstAidGuide.bundled.map(\.id))
         for (topic, guide) in RAGFirstAidAssistant.guideForTopic {
             #expect(topics.contains(topic), "\(topic)")
