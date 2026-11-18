@@ -27,6 +27,7 @@ def test_knowledge_lists_the_chunks_with_their_vectors(client, db):
     chunks = client.get("/knowledge").json()
     assert [c["id"] for c in chunks] == sorted(c["id"] for c in CHUNKS)
     bleeding = next(c for c in chunks if c["id"] == "hemorragia-grave-atender")
+    assert bleeding["topic"] == "hemorragia-grave"
     assert bleeding["text"].startswith("Hemorragia grave\nQué hacer:\n1. ")
     assert bleeding["embedding"] == [0.5, 0.5] and bleeding["embedding_model"] == "fake-model@1"
 
@@ -34,7 +35,7 @@ def test_knowledge_lists_the_chunks_with_their_vectors(client, db):
 # If this fails, run load_knowledge again
 def test_bundled_app_knowledge_matches_content():
     bundled = json.loads(BUNDLED.read_text(encoding="utf-8"))
-    assert [(c["id"], c["text"]) for c in bundled] == sorted((c["id"], c["text"]) for c in CHUNKS)
+    assert [(c["id"], c["topic"], c["text"]) for c in bundled] == sorted((c["id"], c["topic"], c["text"]) for c in CHUNKS)
     assert all(len(c["embedding"]) == 768 for c in bundled)
 
 

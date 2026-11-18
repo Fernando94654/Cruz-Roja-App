@@ -661,7 +661,8 @@ def flatten(topics: list[dict]) -> list[dict]:
         for part, kinds in CHUNK_PARTS.items():
             sections = [f"{SECTION_LABELS[k]}:\n{topic['sections'][k].strip()}" for k in kinds if k in topic["sections"]]
             if sections:
-                chunks.append({"id": f"{topic['id']}-{part}", "text": topic["title"] + "\n" + "\n".join(sections)})
+                chunks.append({"id": f"{topic['id']}-{part}", "topic": topic["id"],
+                               "text": topic["title"] + "\n" + "\n".join(sections)})
     return chunks
 
 

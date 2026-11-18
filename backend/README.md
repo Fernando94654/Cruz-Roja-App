@@ -72,8 +72,9 @@ Migration `0010` creates the `guides` table, seeds the six guides the app used t
 
 ## Knowledge base (first-aid RAG)
 
-Plain RAG. Migration `0011` creates `kb_chunks` with these columns:
+Plain RAG. Migration `0011` creates `kb_chunks` and `0012` adds its `topic`. The columns are:
 - `id`, a slug;
+- `topic`, the emergency the text belongs to (each topic has two texts: how to recognize it, and what to do);
 - `text`, at most 1,800 characters;
 - `embedding`, 768 numbers;
 - `embedding_model`, the model that produced the vector.
