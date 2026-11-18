@@ -6,6 +6,7 @@ struct MedicalProfileView: View {
     @State private var viewModel: MedicalProfileViewModel
     @State private var dependents: DependentProfilesViewModel
     @AppStorage("qrIncludesContacts") private var qrIncludesContacts = false
+    @AppStorage(SimpleMode.storageKey) private var isSimpleMode = false
     @State private var showsLogin = DemoMode.isActive("login")
     @State private var isEditing = false
     @State private var showsQR = false
@@ -23,6 +24,13 @@ struct MedicalProfileView: View {
         NavigationStack {
             List {
                 Section { account }
+                Section {
+                    Toggle("Modo sencillo", isOn: $isSimpleMode)
+                } header: {
+                    Text("Accesibilidad")
+                } footer: {
+                    Text("Una sola pantalla con botones grandes para reportar una emergencia, llamar al 911 o a tus contactos y mostrar tu información médica.")
+                }
                 if session.isSignedIn {
                     content
                     DependentsSection(viewModel: dependents) { isAddingDependent = true }

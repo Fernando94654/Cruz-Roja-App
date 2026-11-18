@@ -154,6 +154,11 @@ final class AppContainer {
         MedicalProfileViewModel(service: medicalProfileService, cache: medicalProfileCache)
     }
 
+    // Last profile saved on the phone, for the simple mode buttons; the sample one in the screenshot demo
+    func cachedMedicalProfile() -> MedicalProfile? {
+        DemoMode.isActive("simple") ? .sample : medicalProfileCache.load()
+    }
+
     // Emergency report; sending it dispatches the ambulance
     func makeEmergencyReportViewModel(report: EmergencyReport = EmergencyReport(),
                                       location: EmergencyLocation? = nil, shareURL: String? = nil) -> EmergencyReportViewModel {

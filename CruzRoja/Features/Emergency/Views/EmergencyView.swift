@@ -4,6 +4,8 @@ import SwiftUI
 /// Main emergency screen with the report button.
 struct EmergencyView: View {
     let container: AppContainer
+    // False in simple mode: a tap starts the report instead of a 3-second hold
+    let requiresHold: Bool
     @State private var path: [EmergencyRoute]
     @State private var reportViewModel: EmergencyReportViewModel
     @State private var showsCountdown = DemoMode.isActive("countdown")
@@ -11,8 +13,9 @@ struct EmergencyView: View {
     @State private var showsConfirmation = DemoMode.isActive("confirm")
     @State private var showsCalm = false
 
-    init(container: AppContainer) {
+    init(container: AppContainer, requiresHold: Bool = true) {
         self.container = container
+        self.requiresHold = requiresHold
         _path = State(initialValue: Self.demoPath)
         let prefilled = DemoMode.isActive("report", "vitals", "summary", "sent", "firstaid", "guide")
         _reportViewModel = State(initialValue: container.makeEmergencyReportViewModel(
@@ -108,20 +111,47 @@ struct EmergencyView: View {
         }
     }
 
-    // Must be held down to avoid accidental reports
+    // Held down for 3 seconds to avoid accidental reports, or tapped in simple mode;
+    // both open the confirmation and the 5-second countdown
     private var reportButton: some View {
+        Group {
+            if requiresHold {
+                reportButtonLabel
+                    .onLongPressGesture(minimumDuration: 3, maximumDistance: 40) {
+                        isPressing = false
+                        showsConfirmation = true
+                    } onPressingChanged: { pressing in
+                        withAnimation(pressing ? .linear(duration: 3) : .easeOut(duration: 0.2)) {
+                            isPressing = pressing
+                        }
+                    }
+            } else {
+                Button { showsConfirmation = true } label: { reportButtonLabel }
+                    .buttonStyle(.plain)
+            }
+        }
+        // VoiceOver and Switch Control users can't hold for 3 seconds; their activation opens the same confirmation
+        .accessibilityElement(children: .ignore)
+        .accessibilityAddTraits(.isButton)
+        .accessibilityLabel("Reportar emergencia")
+        .accessibilityHint("Te pediremos confirmar y tendrás 5 segundos para cancelar antes de enviar tu ubicación.")
+        .accessibilityAction { showsConfirmation = true }
+        .sensoryFeedback(.warning, trigger: showsConfirmation)
+    }
+
+    private var reportButtonLabel: some View {
         VStack(spacing: 8) {
             Image(systemName: "exclamationmark.triangle.fill")
                 .font(.system(size: 40))
             Text("Reportar emergencia")
                 .font(.brand(24))
-            Text(isPressing ? "Sigue presionando…" : "Mantén presionado 3 segundos")
+            Text(requiresHold ? (isPressing ? "Sigue presionando…" : "Mantén presionado 3 segundos") : "Toca para reportar")
                 .font(.subheadline)
                 .opacity(0.85)
         }
         .foregroundStyle(.white)
         .frame(maxWidth: .infinity)
-        .frame(height: 200)
+        .frame(minHeight: 200)
         .background(alignment: .leading) {
             ZStack(alignment: .leading) {
                 Color.brandRed
@@ -133,15 +163,6 @@ struct EmergencyView: View {
         }
         .clipShape(RoundedRectangle(cornerRadius: 22))
         .scaleEffect(isPressing ? 0.97 : 1)
-        .onLongPressGesture(minimumDuration: 3, maximumDistance: 40) {
-            isPressing = false
-            showsConfirmation = true
-        } onPressingChanged: { pressing in
-            withAnimation(pressing ? .linear(duration: 3) : .easeOut(duration: 0.2)) {
-                isPressing = pressing
-            }
-        }
-        .sensoryFeedback(.warning, trigger: showsConfirmation)
     }
 }
 

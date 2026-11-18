@@ -17,7 +17,24 @@ struct RootView: View {
         }
     }()
 
+    @AppStorage(SimpleMode.storageKey) private var isSimpleMode = false
+
     var body: some View {
+        Group {
+            if isSimpleMode || DemoMode.isActive("simple") {
+                SimpleHomeView(container: container)
+            } else {
+                tabs
+            }
+        }
+        .task {
+            async let guides: Void = container.refreshGuides()
+            async let knowledge: Void = container.refreshKnowledge()
+            _ = await (guides, knowledge)
+        }
+    }
+
+    private var tabs: some View {
         TabView(selection: $tab) {
             EmergencyView(container: container)
                 .tabItem { Label("Emergencia", systemImage: "sos") }
@@ -36,11 +53,6 @@ struct RootView: View {
                 .tag(AppTab.profile)
         }
         .tint(Color.brandRed)
-        .task {
-            async let guides: Void = container.refreshGuides()
-            async let knowledge: Void = container.refreshKnowledge()
-            _ = await (guides, knowledge)
-        }
     }
 }
 
