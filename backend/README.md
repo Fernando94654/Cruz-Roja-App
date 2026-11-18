@@ -78,7 +78,7 @@ Plain RAG. Migration `0011` creates `kb_chunks` with these columns:
 - `embedding`, 768 numbers;
 - `embedding_model`, the model that produced the vector.
 
-`GET /knowledge` (public) returns every chunk, sorted by id; a database error returns 503. The app saves the list and embeds each question on the phone. It takes the four chunks with the highest cosine similarity and gives them to Apple's on-device model.
+`GET /knowledge` (public) returns every chunk, sorted by id; a database error returns 503. The app saves the list and embeds each question on the phone. It scores every chunk by cosine similarity and groups them by topic (a topic counts with its best chunk). Apple's on-device model picks the best of the top 5 topics, then answers from that topic's chunks plus the next best topic's. Phones without Apple's model use the top topic and show its texts as they are.
 
 When a chunk's text is edited in Supabase, a trigger clears its vector. The app skips chunks without a vector until `load_knowledge` runs again.
 
@@ -89,7 +89,8 @@ The app ships Google's **EmbeddingGemma** (`google/embeddinggemma-300m`), conver
 - The conversion keeps only Latin-script vocabulary and stores 4-bit weights.
 - Questions are embedded with the model's prompts: `task: search result | query: …` for questions and `title: none | text: …` for chunks.
 - The vectors in the database are computed on a Mac by `tools/embed-knowledge`. It uses the app's own `Embedder.swift` and `BPETokenizer.swift`, so they match what the phone computes.
-- On `tools/embedding-model/retrieval_eval.json` (40 everyday questions), EmbeddingGemma finds the right topic first 34 times and in the top 3 39 times. multilingual-e5-small managed 28 and 35, Apple's NLContextualEmbedding 13 and 21.
+- On `tools/embedding-model/retrieval_eval.json` (40 everyday questions), EmbeddingGemma finds the right topic first 34 times and in the top 3 39 times. multilingual-e5-small managed 28 and 35, Apple's NLContextualEmbedding 13 and 21. These questions were used to choose the model.
+- `tools/embedding-model/retrieval_test.json` has 96 more questions written before any tuning. Search alone gets the right topic first 74 times; with Apple's model picking from the top 5 it gets 87 (14 fixed, 1 broken, McNemar p = 0.001).
 
 ### Content
 
@@ -97,7 +98,12 @@ The app ships Google's **EmbeddingGemma** (`google/embeddinggemma-300m`), conver
 
 ```bash
 .venv/bin/python -m scripts.load_knowledge       # insert new chunks, embed the ones without a vector, update the app's knowledge.json
-.venv/bin/python -m scripts.evaluate_retrieval   # how often search finds the right topic
+```
+
+To measure the search with the app's own code (from the repo root, on a Mac with Apple Intelligence; the build command is at the top of `tools/evaluate-rag/main.swift`):
+
+```bash
+/tmp/evaluate-rag   # right topic first, search only and with Apple's model picking
 ```
 
 `load_knowledge` uses `DATABASE_URL` from `.env` (the shared Supabase database) and needs a Mac with Xcode. It never overwrites a chunk that already exists. Run it after changing `knowledge_content.py`; `tests/test_knowledge.py` fails while the app's copy is out of date.

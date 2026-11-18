@@ -26,24 +26,39 @@ struct KnowledgeTests {
     }
 
     @Test(arguments: [
-        ("a mi amigo lo apuñalaron y no para de salir sangre", "hemorragia-grave-"),
-        ("se quemó con aceite", "quemaduras-"),
-        ("le picó una abeja y se le hinchó la cara", "anafilaxia-"),
-        ("lo sacamos de la alberca y no respira", "ahogamiento-"),
+        ("a mi amigo lo apuñalaron y no para de salir sangre", "hemorragia-grave"),
+        ("se quemó con aceite", "quemaduras"),
+        ("le picó una abeja y se le hinchó la cara", "anafilaxia"),
+        ("lo sacamos de la alberca y no respira", "ahogamiento"),
     ])
     func searchFindsTheRightTopic(question: String, topic: String) async throws {
         let retriever = KnowledgeRetriever(cache: KnowledgeCache(directory: temporaryFolder()))
-        let chunks = try await retriever.search(question)
-        #expect(chunks.count == 4)
-        #expect(chunks.first?.id.hasPrefix(topic) == true)
+        let topics = try await retriever.search(question)
+        #expect(topics.count == 5)
+        #expect(topics.first?.id == topic)
+        #expect(topics.first?.chunks.count == 2)
     }
 
-    @Test func withoutAppleModelTheAnswerIsTheClosestChunk() async {
+    @Test func rankGroupsChunksByTopic() {
+        let chunks = [
+            KnowledgeChunk(id: "a-uno", text: "A\nuno", embedding: [1, 0], embeddingModel: "test"),
+            KnowledgeChunk(id: "b-uno", text: "B\nuno", embedding: [0.9, 0.1], embeddingModel: "test"),
+            KnowledgeChunk(id: "a-dos", text: "A\ndos", embedding: [0, 1], embeddingModel: "test"),
+            KnowledgeChunk(id: "c-uno", text: "C\nuno", embedding: [0.5, 0.5], embeddingModel: "test"),
+        ]
+        let topics = KnowledgeRetriever.rank(chunks, query: [1, 0], k: 2)
+        #expect(topics.map(\.id) == ["a", "b"])
+        #expect(topics[0].title == "A")
+        #expect(topics[0].chunks.map(\.id) == ["a-uno", "a-dos"])
+    }
+
+    @Test func withoutAppleModelTheAnswerIsTheWholeTopic() async {
         let assistant = RAGFirstAidAssistant(
             retriever: KnowledgeRetriever(cache: KnowledgeCache(directory: temporaryFolder())),
             fallback: KeywordFirstAidAssistant(delay: .zero), useAppleModel: false)
         let answer = await assistant.answer("se quemó con aceite")
-        #expect(answer.text.hasPrefix("Quemaduras\n"))
+        #expect(answer.text.contains("Cómo reconocerlo:"))
+        #expect(answer.text.contains("Qué hacer:"))
         #expect(answer.guide?.id == "burn")
     }
 
@@ -56,7 +71,7 @@ struct KnowledgeTests {
 
     @Test func guideMapPointsAtRealTopicsAndGuides() {
         let topics = Set(KnowledgeCache(directory: temporaryFolder()).load()
-            .map { $0.id.split(separator: "-").dropLast().joined(separator: "-") })
+            .map { KnowledgeRetriever.topic(of: $0.id) })
         let guides = Set(FirstAidGuide.bundled.map(\.id))
         for (topic, guide) in RAGFirstAidAssistant.guideForTopic {
             #expect(topics.contains(topic), "\(topic)")

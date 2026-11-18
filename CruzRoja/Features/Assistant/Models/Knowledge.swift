@@ -12,3 +12,10 @@ struct KnowledgeChunk: Codable, Sendable, Hashable, Identifiable {
         case embeddingModel = "embedding_model"
     }
 }
+
+// The texts of one topic, best match first
+struct KnowledgeTopic: Sendable {
+    let id: String
+    let title: String
+    let chunks: [KnowledgeChunk]
+}
