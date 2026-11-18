@@ -13,12 +13,13 @@ digraph system {
     app [label=<<b>Enlace Vital app</b><br/><font point-size="10">SwiftUI · MVVM · Swift Concurrency</font>>, fillcolor="#FFFFFF"];
     subgraph cluster_ondevice {
       label="On-device frameworks"; fontsize=12; style="rounded,dashed"; color="#7AA7D6";
-      fm [label="Foundation Models\n(Apple Intelligence, iOS 26)\nreport extraction + summary"];
+      fm [label="Foundation Models\n(Apple Intelligence, iOS 26)\nreport extraction, summaries,\nCalma coach, profile dictation"];
       speech [label="Speech + AVFoundation\ndictation (es-MX) / voice guidance"];
       loc [label="Core Location + MapKit\nposition, maps"];
       sms [label="MessageUI\nSMS composer"];
       vision [label="Vision + AVFoundation\nbody pose for the CPR coach"];
       coreml [label="Core ML (EmbeddingGemma)\non-device RAG for first aid"];
+      intents [label="App Intents\nSiri shortcut for Calma"];
       store [label="Keychain + UserDefaults/caches\nJWT, session, profile, guides (offline)"];
     }
   }
@@ -56,6 +57,7 @@ digraph system {
   app -> store [dir=none, style=dashed];
   app -> vision [dir=none, style=dashed];
   app -> coreml [dir=none, style=dashed];
+  app -> intents [dir=none, style=dashed];
   app -> api [label="HTTPS · REST/JSON\nBearer JWT", lhead=cluster_cloud, ltail=cluster_ios, penwidth=2, color="#C8102E"];
   api -> db [label="psycopg3 · TLS\nsession pooler", penwidth=2];
   page -> db [style=invis];

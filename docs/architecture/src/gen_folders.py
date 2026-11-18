@@ -10,6 +10,7 @@ IOS = ("CruzRoja/", "iOS app target", [
         ("QR/", "QRCodeGenerator for the medical profile", []),
         ("Demo/", "DemoMode switches for presentations", []),
         ("Logging/", "os.Logger categories", []),
+        ("Accessibility/", "SimpleMode setting", []),
     ]),
     ("Features/", "one folder per feature, same 4 subfolders", [
         ("Emergency/", "SOS, AI report, SMS to operator", [
@@ -20,6 +21,8 @@ IOS = ("CruzRoja/", "iOS app target", [
         ]),
         ("Assistant/", "first-aid guides + on-device RAG (EmbeddingGemma)", []),
         ("CPRCoach/", "camera CPR coach (Vision body pose)", []),
+        ("Calm/", "AI calm coach for panic attacks, Siri shortcut", []),
+        ("SimpleMode/", "large-button home for older adults", []),
         ("Alerts/", "official alerts + community reports", []),
         ("Family/", "family circle, wellbeing checks", []),
         ("Learn/", "lessons, videos, progress", []),
