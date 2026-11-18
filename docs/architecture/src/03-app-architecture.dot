@@ -8,7 +8,7 @@ digraph app {
   subgraph cluster_app {
     label=<<b>App/</b> - entry point and composition root>; fontsize=14; style="rounded,filled"; fillcolor="#FDECEE"; color="#C8102E";
     main [label=<<b>CruzRojaApp</b><br/><font point-size="10">@main · WindowGroup</font>>];
-    root [label=<<b>RootView</b><br/><font point-size="10">TabView: Emergency · Family · Alerts · Learn · Profile</font>>];
+    root [label=<<b>RootView</b><br/><font point-size="10">TabView: Emergency · Family · Alerts · Learn · Profile<br/>or SimpleHomeView in simple mode</font>>];
     container [label=<<b>AppContainer</b><br/><font point-size="10">.live (API services) · .preview (mocks)<br/>builds services once, creates each ViewModel</font>>, fillcolor="#FFF7F8"];
   }
 
@@ -29,11 +29,11 @@ digraph app {
   subgraph cluster_core {
     label=<<b>Core/</b> - shared infrastructure>; fontsize=14; style="rounded,filled"; fillcolor="#EEF7EE"; color="#6DBF6D";
     net [label=<<b>Networking</b><br/><font point-size="10">APIClient (async URLSession)<br/>APIConfig · AuthToken (Keychain)</font>>];
-    corelist [label=<<b>Speech · Location · QR · Design · Demo · Logging</b><br/><font point-size="10">SpeechService, SpeechDictation, CoreLocationService,<br/>QRCodeGenerator, Theme, DemoMode, Log</font>>];
+    corelist [label=<<b>Speech · Location · QR · Design · Demo · Logging · Accessibility</b><br/><font point-size="10">SpeechService, SpeechDictation, CoreLocationService,<br/>QRCodeGenerator, Theme, DemoMode, Log, SimpleMode</font>>];
   }
 
   backend [label=<<b>Enlace Vital API</b><br/><font point-size="10">FastAPI · REST/JSON</font>>, shape=cylinder, fillcolor="#FFF4E5", color="#E0A84F"];
-  others [label=<<b>Other features, same structure</b><br/><font point-size="10">Alerts · Assistant · Auth · Family · Learn · MedicalProfile</font>>, style="rounded,dashed", fillcolor="#FFFFFF"];
+  others [label=<<b>Other features, same structure</b><br/><font point-size="10">Alerts · Assistant (RAG) · Auth · Calm · CPRCoach · Family<br/>Learn · MedicalProfile · SimpleMode</font>>, style="rounded,dashed", fillcolor="#FFFFFF"];
 
   main -> root;
   main -> container [label="creates"];
