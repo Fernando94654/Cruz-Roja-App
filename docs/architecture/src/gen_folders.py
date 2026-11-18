@@ -42,7 +42,7 @@ BACKEND = ("backend/", "Python package enlace-vital-backend", [
         ("crypto.py", "Fernet encryption of medical data", []),
         ("db.py / deps.py", "engine, session per request", []),
     ]),
-    ("alembic/versions/", "schema migrations 0001-0011", []),
+    ("alembic/versions/", "schema migrations 0001-0012", []),
     ("scripts/", "seed.py, sync_official_alerts.py, load_knowledge.py", []),
     ("tests/", "pytest against a throwaway Postgres DB", []),
     ("pyproject.toml", "dependencies and tooling", []),

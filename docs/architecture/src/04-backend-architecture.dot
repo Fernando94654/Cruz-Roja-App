@@ -27,7 +27,7 @@ digraph backend {
     crypto [label=<<b>crypto.py</b><br/><font point-size="10">Fernet encryption of medical lists</font>>];
     smn [label=<<b>smn_alerts.py</b><br/><font point-size="10">SMN CAP feed → official_alerts</font>>];
   }
-  alembic [label=<<b>alembic/versions</b><br/><font point-size="10">0001 … 0011 schema migrations</font>>];
+  alembic [label=<<b>alembic/versions</b><br/><font point-size="10">0001 … 0012 schema migrations</font>>];
   db [label=<<b>PostgreSQL + PostGIS</b><br/><font point-size="10">Supabase · RLS on all tables</font>>, shape=cylinder, fillcolor="#EEF7EE", color="#6DBF6D"];
 
   client -> main [label="HTTPS"];

@@ -33,7 +33,7 @@ M = {
   ("guides", [("id","varchar(80)","PK"),("title","varchar(120)",""),("icon","varchar(80)",""),("keywords","text[]",""),("manual_page","int",""),("position","int",""),("steps","jsonb","")]),
   ("lessons", [("id","uuid","PK"),("title","varchar(120)",""),("description","text",""),("duration_seconds","int",""),("video_url","varchar(500)",""),("guide_id","varchar(80)","FK"),("publisher","text",""),("steps","text[]",""),("position","int","")]),
   ("lesson_completions", [("user_id","uuid","PK FK"),("lesson_id","uuid","PK FK"),("completed_at","timestamptz","")]),
-  ("kb_chunks", [("id","varchar(120)","PK"),("text","text",""),("embedding","real[]",""),("embedding_model","text",""),("updated_at","timestamptz","")]),
+  ("kb_chunks", [("id","varchar(120)","PK"),("topic","varchar(120)",""),("text","text",""),("embedding","real[]",""),("embedding_model","text",""),("updated_at","timestamptz","")]),
  ]),
 }
 

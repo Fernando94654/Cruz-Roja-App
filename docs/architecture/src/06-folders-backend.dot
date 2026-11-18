@@ -22,7 +22,7 @@ digraph folders {
   n2 -> n9;
   n10 [label=<<b>db.py / deps.py</b><br/><font point-size="10">engine, session per request</font>>, fillcolor="#FFFFFF", fontcolor="black", color="#C8102E"];
   n2 -> n10;
-  n11 [label=<<b>alembic/versions/</b><br/><font point-size="10">schema migrations 0001-0011</font>>, fillcolor="#FDECEE", fontcolor="black", color="#C8102E"];
+  n11 [label=<<b>alembic/versions/</b><br/><font point-size="10">schema migrations 0001-0012</font>>, fillcolor="#FDECEE", fontcolor="black", color="#C8102E"];
   n1 -> n11;
   n12 [label=<<b>scripts/</b><br/><font point-size="10">seed.py, sync_official_alerts.py, load_knowledge.py</font>>, fillcolor="#FDECEE", fontcolor="black", color="#C8102E"];
   n1 -> n12;
