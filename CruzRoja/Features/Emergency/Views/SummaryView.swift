@@ -5,7 +5,6 @@ import SwiftUI
 struct SummaryView: View {
     let viewModel: EmergencyReportViewModel
     @State private var showsComposer = false
-    @State private var copied = false
     @State private var showsCalm = false
 
     private var report: EmergencyReport { viewModel.report }
@@ -19,21 +18,12 @@ struct SummaryView: View {
                     trackingStep("Unidad en camino", "Ambulancia 214 · ≈ 8 min", done: false)
                 }
 
-                Section("Enlace para el operador") {
-                    Text(viewModel.shareURL ?? "")
-                        .foregroundStyle(Color.brandRed)
-                        .textSelection(.enabled)
-                    HStack {
-                        if MFMessageComposeViewController.canSendText() {
-                            Button("Enviar SMS de nuevo") { showsComposer = true }
-                        }
-                        Button(copied ? "Copiado" : "Copiar enlace") {
-                            UIPasteboard.general.string = viewModel.shareURL
-                            copied = true
+                if MFMessageComposeViewController.canSendText() {
+                    Section {
+                        Button { showsComposer = true } label: {
+                            Label("Enviar SMS de nuevo", systemImage: "message")
                         }
                     }
-                    .buttonStyle(.bordered)
-                    .tint(.primary)
                 }
 
                 Section {
@@ -79,7 +69,7 @@ struct SummaryView: View {
                 Section {
                     Button {
                         Task {
-                            // The simulator can't send SMS; the link stays on screen to copy
+                            // The simulator can't send SMS, so the composer only opens on a device
                             if await viewModel.send(), MFMessageComposeViewController.canSendText() {
                                 showsComposer = true
                             }
